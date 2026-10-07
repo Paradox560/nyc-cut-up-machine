@@ -1,6 +1,6 @@
-# SHOPLIFT (NYC Cut-Up Machine)
+# StreetScript (NYC Cut-Up Machine)
 
-<img src="web/logo.svg" width="72" alt="SHOPLIFT logo: a square cut along its diagonal" />
+<img src="web/logo.svg" width="72" alt="StreetScript logo: a square cut along its diagonal" />
 
 **Write something new using only words New York put on its buildings.**
 

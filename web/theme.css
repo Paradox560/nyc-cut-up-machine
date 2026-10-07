@@ -1,4 +1,4 @@
-/* SHOPLIFT theme: night-city dark UI, acid-lime accent, hard edges.
+/* StreetScript theme: night-city dark UI, acid-lime accent, hard edges.
    Layered on top of styles.css. Layout rules stay there; this file only changes colour, type and edge details.
    The printed paper and the source drawer stay light so cutouts from the photographs read clearly. */
 :root { color-scheme: dark; --ground: #0a0a0b; --ink: #f1f1ec; --muted: #8e8e88; --line: #26262a; --accent: #c8ff1a; --paper: #f4f1e5; --edge: #34343a; --on-accent: #0a0a0b; }

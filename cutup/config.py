@@ -32,7 +32,7 @@ class Config:
     elasticsearch_url: str = ""
     elasticsearch_api_key: str = field(default="", repr=False)
     index: str = "nyc-cut-up-machine"
-    chat_model: str = "mistral-medium-latest"
+    chat_model: str = "ministral-3b-2512"
     ocr_model: str = "mistral-ocr-latest"
     embed_model: str = "mistral-embed"
     voice_id: str = ""
@@ -67,7 +67,7 @@ def load_config(project_root: Path = ROOT) -> Config:
         elasticsearch_url=endpoint,
         elasticsearch_api_key=values.get("ELASTICSEARCH_API_KEY", "").strip(),
         index=index,
-        chat_model=values.get("MISTRAL_CHAT_MODEL", "mistral-medium-latest"),
+        chat_model=values.get("MISTRAL_CHAT_MODEL", "ministral-3b-2512"),
         ocr_model=values.get("MISTRAL_OCR_MODEL", "mistral-ocr-latest"),
         embed_model=values.get("MISTRAL_EMBED_MODEL", "mistral-embed"),
         voice_id=values.get("MISTRAL_VOICE_ID", "").strip(),

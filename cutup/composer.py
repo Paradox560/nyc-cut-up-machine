@@ -75,7 +75,7 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
                 trace.append({"step": "Repair", "detail": "Rejected unsupported output and requested a constrained revision."})
         trace.append({"step": "Mistral composition", "detail": f"{config.chat_model} selected source token IDs from {len(words)} unique words."})
         if include_unreviewed:
-            warnings.append("Includes unreviewed OCR. Word provenance is verified against OCR, not human-confirmed lettering.")
+            warnings.append("Includes unreviewed transcription. Word provenance is checked against text that has not been visually verified against the photograph.")
     used_ids = {word["source_id"] for line in lines for word in line}
     used = [source for source in sources if source["id"] in used_ids]
     total = sum(len(line) for line in lines)

@@ -32,7 +32,7 @@ python3 -m cutup check
 | `ELASTICSEARCH_URL` | The Elasticsearch HTTPS endpoint, not a Kibana URL or Cloud ID |
 | `ELASTICSEARCH_API_KEY` | An encoded API key with create-index, document write, read, and index metadata permissions for this project's index |
 | `ELASTICSEARCH_INDEX` | Defaults to `nyc-cut-up-machine`; use a dedicated index |
-| `MISTRAL_CHAT_MODEL` | Defaults to `mistral-medium-latest`; choose a model your account can access |
+| `MISTRAL_CHAT_MODEL` | Defaults to `ministral-3b-2512`; choose a model your account has inference quota for |
 | `MISTRAL_OCR_MODEL` | Defaults to `mistral-ocr-latest` |
 | `MISTRAL_EMBED_MODEL` | `mistral-embed` (1,024 dimensions) |
 | `MISTRAL_VOICE_ID` | Optional saved Mistral voice; enables spoken compositions |
@@ -52,6 +52,14 @@ python3 -m cutup
 Open **Source drawer**. Inspect each image, correct the transcription, keep only clearly visible storefront words, and mark the source reviewed. Saving a review embeds the corrected text and writes it to Elasticsearch. Index all already-ingested sources with `python3 -m cutup index`.
 
 The full manifest includes additional Manhattan storefronts with richer signage; increase `--limit` to ingest those. Review state is preserved on ordinary re-ingestion. The explicit OCR refresh option resets it. See [archive ingestion and attribution](docs/ARCHIVE.md) for details.
+
+If your account has vision/chat quota but its OCR API is rate-limited, select the explicit vision-transcription path:
+
+```sh
+python3 scripts/ingest.py --limit 18 --transcription-method vision
+```
+
+This uses the configured vision-capable chat model. Sources retain the actual transcription method and model; the app does not call this OCR API output. Model listing access alone does not prove that the account has inference quota for every listed model.
 
 For a custom collection, copy the schema in `data/seeds.json` and use `--manifest path/to/manifest.json`. Downloads are restricted to the Municipal Archives host, checked as JPEG/PNG, bounded in size, and requested politely. Images remain local, not in this source repository.
 

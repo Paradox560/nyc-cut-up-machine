@@ -22,8 +22,16 @@ export function isSample(source) {
   return source.synthetic === true || String(source.id).startsWith('sample-');
 }
 
-function sourceImage(source, className) {
-  const url = safeURL(source.image_url, { local: true });
+function sourceImage(source, className, originalURL) {
+  let verifiedURL = null;
+  if (typeof originalURL === 'string') {
+    try {
+      const candidate = new URL(originalURL, location.origin);
+      if (candidate.protocol === 'blob:' && candidate.origin === location.origin) verifiedURL = candidate.href;
+      else verifiedURL = archiveImageURL(originalURL);
+    } catch { /* Only same-origin photograph URLs may be displayed. */ }
+  }
+  const url = verifiedURL || safeURL(source.image_url, { local: true });
   if (!url) return element('div', 'source-no-image', isSample(source) ? 'Sample words.\nNo archive photograph.' : 'Image unavailable');
   const image = element('img', className);
   image.src = url;
@@ -87,36 +95,39 @@ export function renderComposition(container, composition, onSelectSource, origin
   container.replaceChildren(fragment);
 }
 
-export function renderSourceGrid(container, sources, { onOpen, onReview }) {
+export function renderSourceGrid(container, sources, { onOpen, onReview, snapshot = false, originals = new Map() }) {
   container.replaceChildren();
   for (const source of sources) {
     const card = element('article', 'source-card');
     const visual = element('button', 'source-card-visual');
     visual.type = 'button';
     visual.setAttribute('aria-label', `Inspect ${source.title}`);
-    visual.append(sourceImage(source, ''));
+    visual.append(sourceImage(source, '', originals.get(source.id)));
     visual.addEventListener('click', () => onOpen(source));
     card.append(visual, element('h3', '', source.title || 'Untitled source'), element('p', 'source-card-detail', sourceDetails(source)));
     if (isSample(source)) card.append(element('span', 'sample-label', 'Sample vocabulary · not archival evidence'));
-    card.append(element('p', 'source-card-text', source.ocr_text));
+    if (!snapshot) card.append(element('p', 'source-card-text', source.ocr_text));
     const bottom = element('div', 'source-card-bottom');
     const inspect = element('button', '', 'Inspect source ↗');
     inspect.type = 'button';
     inspect.addEventListener('click', () => onOpen(source));
-    const reviewLabel = element('label', 'source-reviewed');
-    const checkbox = element('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = Boolean(source.reviewed);
-    checkbox.disabled = isSample(source);
-    checkbox.setAttribute('aria-label', `Mark ${source.title} reviewed`);
-    checkbox.addEventListener('change', async () => {
-      checkbox.disabled = true;
-      try { await onReview(source, checkbox.checked); }
-      catch { checkbox.checked = Boolean(source.reviewed); }
-      finally { checkbox.disabled = isSample(source); }
-    });
-    reviewLabel.append(checkbox, document.createTextNode(isSample(source) ? 'Sample' : 'Reviewed'));
-    bottom.append(inspect, reviewLabel);
+    bottom.append(inspect);
+    if (!snapshot) {
+      const reviewLabel = element('label', 'source-reviewed');
+      const checkbox = element('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = Boolean(source.reviewed);
+      checkbox.disabled = isSample(source) || typeof onReview !== 'function';
+      checkbox.setAttribute('aria-label', `Mark ${source.title} reviewed`);
+      checkbox.addEventListener('change', async () => {
+        checkbox.disabled = true;
+        try { await onReview(source, checkbox.checked); }
+        catch { checkbox.checked = Boolean(source.reviewed); }
+        finally { checkbox.disabled = isSample(source) || typeof onReview !== 'function'; }
+      });
+      reviewLabel.append(checkbox, document.createTextNode(isSample(source) ? 'Sample' : 'Reviewed'));
+      bottom.append(reviewLabel);
+    }
     card.append(bottom);
     container.append(card);
   }
@@ -138,7 +149,7 @@ export function renderSourceDialog(container, source, { onSave, snapshot = false
     container.append(highlightedPhoto(token, source, originalURL));
     const crop = token.crop;
     container.append(element('p', 'source-crop-coordinates', `${crop.width} × ${crop.height} px at (${crop.x}, ${crop.y})${crop.method ? ` · ${crop.method}` : ''}`));
-  } else container.append(sourceImage(source, 'source-dialog-image'));
+  } else container.append(sourceImage(source, 'source-dialog-image', originalURL));
   container.append(element('p', 'source-dialog-label', 'Words from this source'));
   container.append(element('p', 'source-transcription', source.ocr_text));
   if (source.transcription_method) {
@@ -154,7 +165,7 @@ export function renderSourceDialog(container, source, { onSave, snapshot = false
     link.rel = 'noopener noreferrer';
     container.append(link);
   }
-  if (snapshot) container.append(element('p', 'source-attribution', 'This is the source snapshot used for this print. Open the source drawer tab to review or update the current transcription.'));
+  if (snapshot) container.append(element('p', 'source-attribution', 'This original photograph contributed to the current print.'));
   if (isSample(source) || snapshot) return;
   const form = element('form', 'source-review-form');
   const textLabel = element('label', 'source-dialog-label', 'Check and correct the transcription');

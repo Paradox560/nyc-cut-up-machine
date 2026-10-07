@@ -19,7 +19,7 @@ function render(data) {
     list.append(li);
   }
   status.textContent = data.results.length
-    ? `${data.results.length} photographs, ranked by meaning and by words${data.mode === 'demo' ? ' (sample vocabulary)' : ''}.`
+    ? `Photographs ranked by meaning and by words${data.mode === 'demo' ? ' (sample vocabulary)' : ''}.`
     : 'No reviewed photographs match. Try another feeling.';
 }
 

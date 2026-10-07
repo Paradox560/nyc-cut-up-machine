@@ -150,6 +150,7 @@ class ImportSemanticsTests(unittest.TestCase):
         self.providers = ModuleType("cutup.providers")
         self.providers.MistralClient = Mock()
         self.providers.MistralClient.return_value.ocr.return_value = "SYNTHETIC TEST TEXT"
+        self.providers.MistralClient.return_value.transcribe_image.return_value = "SYNTHETIC VISION TEST"
         self.providers.ElasticClient = Mock()
 
     def run_import(self, *arguments, config=None):
@@ -182,6 +183,15 @@ class ImportSemanticsTests(unittest.TestCase):
         saved = CorpusStore(self.config.data_dir).get(self.seed["id"])
         self.assertTrue(saved["reviewed"])
         self.assertEqual(saved["ocr_text"], "HUMAN VERIFIED TEST")
+
+    def test_explicit_vision_selection_records_method_and_requires_review(self):
+        self.assertEqual(self.run_import("--transcription-method", "vision"), 0)
+        self.providers.MistralClient.return_value.ocr.assert_not_called()
+        self.providers.MistralClient.return_value.transcribe_image.assert_called_once_with(self.image)
+        saved = CorpusStore(self.config.data_dir).get(self.seed["id"])
+        self.assertEqual(saved["transcription_method"], "vision")
+        self.assertEqual(saved["transcription_model"], self.config.chat_model)
+        self.assertFalse(saved["reviewed"])
 
     def test_refresh_ocr_resets_review(self):
         source = ingest.make_source(self.seed, self.image, "HUMAN VERIFIED TEST")

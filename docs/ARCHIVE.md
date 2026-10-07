@@ -1,11 +1,15 @@
 # Archive ingestion and evidence
 
-The starting manifest contains the three real photographs referenced by the
+The manifest includes the three starter photographs referenced by the
 [hackathon's NYC tax-photo notebook](https://github.com/AvenueJ/elastic-mistral-hacknight/blob/main/nyc_tax_photos.ipynb).
+It also includes 15 photographs from the first page of the archive's
+[Manhattan collection](https://nycrecords.access.preservica.com/uncategorized/SO_e6e79554-4227-414f-afc2-5f008fb9c96b/),
+discovered using the folder documented in the event's
+[scraper](https://github.com/AvenueJ/elastic-mistral-hacknight/blob/main/tax_photos_scraper.py).
 Item metadata was checked against the Municipal Archives item pages on October 7,
-2026. These are ingestion seeds, not a claim that three photographs provide enough
-words for a compelling poem. Expand the curated collection after reviewing their
-signage.
+2026. The Manhattan set covers South, Whitehall, Front, and Moore Streets, with
+legible hotel, bank, shop, and office signs. Review transcriptions before admitting
+their words to the composition vocabulary.
 
 | Item | Borough | Block | Lot |
 | --- | --- | --- | --- |
@@ -13,8 +17,11 @@ signage.
 | [453 Richmond Terrace](https://nycrecords.access.preservica.com/uncategorized/IO_02dbfda8-e39f-4254-b65f-23b8933201dd/) | Staten Island | 2 | 728 |
 | [427 Richmond Terrace](https://nycrecords.access.preservica.com/uncategorized/IO_13d2ff2f-ae36-4405-a02e-0eec3cea1db0/) | Staten Island | 2 | 720 |
 
-All three item records date the photograph collection to 1939–1941. The exact
-capture date of each photograph is not asserted.
+The 15 additional records and all item URLs are in `data/seeds.json`. All 18 item
+records date the photograph collection to 1939–1941. The exact capture date of
+each photograph is not asserted. Downloads for the Staten Island starter images
+are 400 × 600 pixels; the Manhattan downloads are 2800 × 4200 pixels. No images
+were upscaled or modified.
 
 ## Import
 
@@ -25,11 +32,17 @@ standard library and configuration from the ignored `.env.local` file.
 # Download the three approved images, without calling Mistral or Elasticsearch.
 python3 scripts/ingest.py --download-only
 
-# Mistral OCR, lexical extraction, and local corpus storage.
-python3 scripts/ingest.py --limit 3
+# Download all 18 manifest images without OCR costs.
+python3 scripts/ingest.py --download-only --limit 18
+
+# Mistral OCR, lexical extraction, and local corpus storage for the collection.
+python3 scripts/ingest.py --limit 18
 
 # Explicitly write the imported records and embeddings to Elasticsearch too.
-python3 scripts/ingest.py --limit 3 --index
+python3 scripts/ingest.py --limit 18 --index
+
+# If OCR is unavailable, explicitly use Mistral vision chat for transcription.
+python3 scripts/ingest.py --limit 18 --transcription-method vision
 ```
 
 OCR requires `MISTRAL_API_KEY`. Indexing also requires `ELASTICSEARCH_URL` and
@@ -48,6 +61,12 @@ Existing local OCR and review decisions are reused. `--refresh-ocr` deliberately
 replaces them, incurs another OCR request, and resets review. A failed import
 exits nonzero; earlier successfully stored records remain available so a rerun
 can resume. Indexing uses source IDs and never asks to delete the entire index.
+The source's `ocr_model` records the configured model identifier used for its OCR
+request; aliases such as `mistral-ocr-latest` can resolve differently over time.
+Every new transcription also records `transcription_method` and
+`transcription_model`. Vision is an explicit alternative, never a silent fallback;
+it asks for legible signage only and still leaves sources unreviewed. For existing
+sources, add `--refresh-ocr` to replace a transcription with the selected method.
 
 ## Review before composition
 

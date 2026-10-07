@@ -228,6 +228,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--download-only", action="store_true", help="Download images without OCR, credentials, or index writes.")
     parser.add_argument("--index", action="store_true", help="Also write sources to the configured Elasticsearch index.")
     parser.add_argument("--refresh-ocr", action="store_true", help="Replace existing OCR; resets human review and incurs OCR usage.")
+    parser.add_argument("--transcription-method", choices=("ocr", "vision"), default="ocr",
+                        help="Use Mistral OCR (default) or explicitly select vision chat transcription.")
     args = parser.parse_args(argv)
     if args.download_only and (args.index or args.refresh_ocr):
         parser.error("--download-only cannot be combined with --index or --refresh-ocr")
@@ -273,7 +275,12 @@ def main(argv: list[str] | None = None) -> int:
                 source["image_url"] = f"/archive/{image_path.name}"
                 print(f"Reusing stored OCR/review: {seed['title']}")
             else:
-                source = make_source(seed, image_path, mistral.ocr(image_path))
+                transcribe = mistral.ocr if args.transcription_method == "ocr" else mistral.transcribe_image
+                source = make_source(seed, image_path, transcribe(image_path))
+                source["transcription_method"] = args.transcription_method
+                source["transcription_model"] = config.ocr_model if args.transcription_method == "ocr" else config.chat_model
+                if args.transcription_method == "ocr":
+                    source["ocr_model"] = config.ocr_model
             store.upsert(source)
             if elastic is not None:
                 elastic.index_source(source)

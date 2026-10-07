@@ -88,5 +88,7 @@ def assemble_model_lines(payload: dict, sources: list[dict], *, require_reviewed
             raise ProvenanceError("Each generated line must contain 1–20 words.")
         if any(not isinstance(word, str) or not word or any(char.isspace() for char in word) for word in row):
             raise ProvenanceError("Each generated selection must be a single word or punctuation mark.")
+    if sum(len(row) for row in lines) > 100:
+        raise ProvenanceError("A composition may contain at most 100 words.")
     return assemble_text("\n".join(" ".join(row) for row in lines), sources,
                          require_reviewed=require_reviewed)

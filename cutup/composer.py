@@ -9,7 +9,7 @@ from .assembly import MAX_MESSAGE, assemble_text, assemble_model_lines, pieces, 
 from .demo import demo_selection, demo_sources
 from .http_client import ProviderError
 from .providers import ElasticClient, MistralClient
-from .provenance import ProvenanceError, plain_text, resolve_lines, verify_crop_images
+from .provenance import ProvenanceError, plain_text, resolve_lines, validate_assembled_lines, verify_crop_images
 from .store import CorpusStore
 from . import moderation
 
@@ -26,7 +26,13 @@ FORM_HINTS = {
 }
 
 
-def finish(config, prompt, form, lines, sources, trace, warnings, *, demo=False, exact_text=None):
+def finish(config, prompt, form, lines, sources, trace, warnings, *, demo=False, exact_text=None,
+           require_reviewed=True):
+    if not demo:
+        try:
+            lines = validate_assembled_lines(lines, sources, require_reviewed=require_reviewed)
+        except ProvenanceError as exc:
+            raise ProviderError(str(exc), code="provenance_rejected") from None
     physical = [piece for line in lines for token in line for piece in pieces(token)]
     used_ids = {piece["source_id"] for piece in physical}
     used = [source for source in sources if source["id"] in used_ids]
@@ -221,4 +227,5 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
         if include_unreviewed:
             warnings.append("Includes unreviewed transcription. Word provenance is checked against text that has not been visually verified against the photograph.")
     return finish(config, prompt, form, lines, sources, trace, warnings, demo=demo,
-                  exact_text=prompt if form == "custom" else None)
+                  exact_text=prompt if form == "custom" else None,
+                  require_reviewed=not include_unreviewed)

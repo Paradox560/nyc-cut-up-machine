@@ -199,6 +199,10 @@ def validate_assembled_lines(lines: list[list[dict]], sources: list[dict], *,
         expected = vocabulary.get(piece["id"])
         if expected is None:
             raise ProvenanceError("A cutout is outside the retrieved photo vocabulary.")
+        crop = piece.get("crop")
+        if not isinstance(crop, dict) or any(type(crop.get(key)) is not int
+                                             for key in ("x", "y", "width", "height")):
+            raise ProvenanceError("Each cutout needs its original integer-pixel crop.")
         fields = ("id", "text", "source_id", "crop", "parent_word_id") if letter else (
             "id", "text", "source_id", "crop", "start", "end")
         if any(piece.get(field) != expected.get(field) for field in fields):

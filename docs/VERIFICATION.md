@@ -4,7 +4,7 @@ Validated on October 7, 2026 against a local Python server, Mistral's hosted API
 
 ## Completed
 
-- 156 automated tests pass, including upstream-failure and custom-lettering edge cases. The suite uses isolated temporary storage and mocked paid services, with real localhost HTTP tests for request boundaries. Crop and glyph tests cover pixel bounds, image hashes, stale locations, exact matching, explicit acceptance, character-coordinate orientation, and rejection of mismatched word segmentation.
+- All 165 automated tests pass after integrating main `c0b0631`. This includes the original 126 tests and additional letter provenance, moderation, source reuse, and word-count regressions. The suite uses isolated temporary storage and mocked paid services, with real localhost HTTP tests.
 - JavaScript modules pass `node --check`.
 - Real Mistral account authentication and `mistral-embed` requests succeed; embeddings contain 1,024 dimensions.
 - The merged local corpus contains 59 photographs: 58 NYC Municipal Archives tax photographs and one Library of Congress photograph of Jack’s storefront in Far Rockaway, Queens. Fifty-one sources have been visually reviewed; 50 contain nonempty transcriptions eligible for indexing. Municipal Archives text uses the explicit `ministral-3b-2512` vision path; the LOC text was transcribed directly from the photograph.
@@ -26,3 +26,10 @@ Validated on October 7, 2026 against a local Python server, Mistral's hosted API
 - Optional Voxtral speech is implemented but was not live-tested because no voice ID was supplied.
 - This is a loopback-only hackathon app, not a publicly hosted multi-user service.
 - Downloaded archive images, reviewed corpus, credentials, and generated prints stay in ignored local data. A fresh clone starts with the labeled synthetic demo or imports and reviews its own archive vocabulary.
+
+## Main integration checks
+
+- Ran `git fetch origin` and `git pull --rebase origin main` on `codex/custom-photo-lettering` before restoring and integrating the feature work.
+- Preserved reuse IDs, both live moderation checks, style hints, new forms, vocabulary search, and the Rearrange UI.
+- Unknown letters, missing photo IDs, missing or altered crops, duplicate source IDs, and unmarked assemblies fail provenance validation. Every accepted letter resolves to a registered photo crop; local image fingerprints are checked before composition.
+- `python3 -m cutup --demo --port 0` starts successfully. Its page, status, and vocabulary routes passed a smoke check on an isolated port, leaving the existing server on port 8765 running.

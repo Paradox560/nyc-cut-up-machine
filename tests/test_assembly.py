@@ -9,7 +9,8 @@ from cutup.assembly import assemble_text, assemble_model_lines, pieces
 from cutup.composer import compose
 from cutup.config import Config
 from cutup.http_client import ProviderError
-from cutup.provenance import ProvenanceError, build_words, build_glyph_id, validate_source, plain_text
+from cutup.provenance import (ProvenanceError, build_words, build_glyph_id, validate_source,
+                              validate_assembled_lines, verify_crop_images, plain_text)
 from cutup.store import CorpusStore
 
 IMAGE = b'isolated photographic evidence fixture'
@@ -101,20 +102,119 @@ class AssemblyTests(unittest.TestCase):
         for payload in [{'lines': [['hello world']]}, {'lines': [[{'text': 'A', 'crop': {}}]]}, {'lines': [['A']], 'crop': {}}, {'lines': [[]]}]:
             with self.subTest(payload=payload), self.assertRaises(ProvenanceError): assemble_model_lines(payload, [photo()])
 
+    def test_generated_letter_words_keep_the_original_hundred_word_limit(self):
+        payload = {'lines': [['J'] * 20] * 5}
+        self.assertEqual(sum(map(len, assemble_model_lines(payload, [photo('J')]))), 100)
+        with self.assertRaisesRegex(ProvenanceError, '100 words'):
+            assemble_model_lines({'lines': payload['lines'] + [['J']]}, [photo('J')])
+
+
+class AssembledProvenanceTests(unittest.TestCase):
+    def setUp(self):
+        self.source = photo('AB')
+        self.lines = assemble_text('BA', [self.source])
+
+    def test_accepted_letters_retain_each_registered_photo_crop_and_assembled_mark(self):
+        result = validate_assembled_lines(self.lines, [self.source])
+        self.assertEqual(result[0][0]['kind'], 'assembled')
+        self.assertEqual(plain_text(result), 'BA')
+        evidence = {glyph['id']: glyph for glyph in self.source['letters']}
+        for glyph in result[0][0]['pieces']:
+            self.assertEqual(glyph, evidence[glyph['id']])
+            self.assertEqual(glyph['source_id'], self.source['id'])
+            self.assertTrue(glyph['crop'])
+        result[0][0]['pieces'][0]['crop']['x'] = 999
+        self.assertNotEqual(self.lines[0][0]['pieces'][0]['crop']['x'], 999)
+
+    def test_unknown_letter_is_rejected_even_with_plausible_photo_and_crop(self):
+        forged = deepcopy(self.lines)
+        forged[0][0]['pieces'][0]['id'] = 'photo:g:unknown'
+        with self.assertRaises(ProvenanceError):
+            validate_assembled_lines(forged, [self.source])
+
+    def test_missing_or_mismatched_letter_evidence_is_rejected(self):
+        for field in ('id', 'source_id', 'crop'):
+            candidate = deepcopy(self.lines)
+            del candidate[0][0]['pieces'][0][field]
+            with self.subTest(missing=field), self.assertRaises(ProvenanceError):
+                validate_assembled_lines(candidate, [self.source])
+        for change in ({'source_id': 'missing-photo'}, {'text': 'Z'},
+                       {'crop': {**self.source['letters'][1]['crop'], 'x': 21}},
+                       {'crop': {**self.source['letters'][1]['crop'], 'x': 20.0}}):
+            candidate = deepcopy(self.lines)
+            candidate[0][0]['pieces'][0].update(change)
+            with self.subTest(change=change), self.assertRaises(ProvenanceError):
+                validate_assembled_lines(candidate, [self.source])
+        for sources in ([], [dict(self.source, letter_crops=[])]):
+            with self.subTest(sources=sources), self.assertRaises(ProvenanceError):
+                validate_assembled_lines(self.lines, sources)
+
+    def test_assembled_spelling_and_marking_cannot_hide_unsourced_letters(self):
+        for change in ({'text': 'CA'}, {'text': 'BAZ'}, {'pieces': []},
+                       {'kind': 'word'}, {'requested_text': 'UNSOURCED'}):
+            candidate = deepcopy(self.lines)
+            candidate[0][0].update(change)
+            with self.subTest(change=change), self.assertRaises(ProvenanceError):
+                validate_assembled_lines(candidate, [self.source])
+        candidate = deepcopy(self.lines)
+        del candidate[0][0]['kind']
+        with self.assertRaises(ProvenanceError):
+            validate_assembled_lines(candidate, [self.source])
+
+    def test_whole_words_still_require_original_word_crop_evidence(self):
+        lines = assemble_text('NEW', [self.source])
+        self.assertEqual(validate_assembled_lines(lines, [self.source]), lines)
+        for change in ({'text': 'INVENTED'}, {'requested_text': 'INVENTED'}, {'crop': None}):
+            candidate = deepcopy(lines)
+            candidate[0][0].update(change)
+            with self.subTest(change=change), self.assertRaises(ProvenanceError):
+                validate_assembled_lines(candidate, [self.source])
+
+    def test_duplicate_photo_identifiers_are_rejected_by_assembly_and_validator(self):
+        sources = [self.source, deepcopy(self.source)]
+        for operation in (lambda: assemble_text('BA', sources),
+                          lambda: validate_assembled_lines(self.lines, sources)):
+            with self.assertRaises(ProvenanceError): operation()
+
+    def test_unreviewed_and_synthetic_letters_do_not_become_verified_sources(self):
+        for change in ({'reviewed': False}, {'synthetic': True}):
+            with self.subTest(change=change), self.assertRaises(ProvenanceError):
+                validate_assembled_lines(self.lines, [{**self.source, **change}])
+        with self.assertRaises(ProvenanceError):
+            validate_assembled_lines(self.lines, [{**self.source, 'synthetic': True}],
+                                     require_reviewed=False)
+
+    def test_letter_only_sources_require_matching_local_photo_bytes(self):
+        source = {**self.source, 'ocr_text': '', 'word_crops': []}
+        with tempfile.TemporaryDirectory() as directory:
+            data = Path(directory)
+            archive = data / 'archive'
+            archive.mkdir()
+            image = archive / 'photo.jpg'
+            image.write_bytes(IMAGE)
+            verify_crop_images([source], data)
+            self.assertEqual(validate_assembled_lines(self.lines, [source]), self.lines)
+            for replacement in (b'changed photograph', None):
+                if replacement is None:
+                    image.unlink()
+                else:
+                    image.write_bytes(replacement)
+                with self.subTest(replacement=replacement), self.assertRaises(ProvenanceError):
+                    verify_crop_images([source], data)
+
 
 class CustomCompositionTests(unittest.TestCase):
     def setUp(self):
-        moderation_patch = patch("cutup.composer.moderation.check_text", return_value={"flagged": False, "categories": []})
-        moderation_patch.start()
-        self.addCleanup(moderation_patch.stop)
         self.directory = tempfile.TemporaryDirectory();self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         self.config = Config(project_root=self.root,data_dir=self.root/'data',mistral_api_key='test',elasticsearch_url='https://example.test',elasticsearch_api_key='test')
         archive = self.config.data_dir/'archive';archive.mkdir(parents=True);(archive/'photo.jpg').write_bytes(IMAGE)
         self.source = photo()
+        self.clean = {'results': [{'categories': {}, 'category_scores': {}}]}
 
     def test_custom_keeps_verbatim_message_uses_elasticsearch_and_never_rewrites_with_chat(self):
         with patch('cutup.composer.ElasticClient') as elastic, patch('cutup.composer.MistralClient') as mistral:
+            mistral.return_value.request.return_value = self.clean
             elastic.return_value.search.return_value = [self.source]
             elastic.return_value.glyph_sources.return_value = []
             text = '  New York,\nquixotic!  '
@@ -129,6 +229,7 @@ class CustomCompositionTests(unittest.TestCase):
 
     def test_generated_forms_can_spell_novel_words_from_photo_letters(self):
         with patch('cutup.composer.ElasticClient') as elastic, patch('cutup.composer.MistralClient') as mistral:
+            mistral.return_value.request.return_value = self.clean
             elastic.return_value.search.return_value = [self.source]
             elastic.return_value.glyph_sources.return_value = []
             mistral.return_value.compose.return_value = {'lines': [['quixotic', 'city']]}
@@ -137,7 +238,8 @@ class CustomCompositionTests(unittest.TestCase):
             self.assertTrue(all(p['crop'] for row in result['lines'] for token in row for p in pieces(token)))
 
     def test_custom_missing_character_fails_without_saving(self):
-        with patch('cutup.composer.ElasticClient') as elastic:
+        with patch('cutup.composer.ElasticClient') as elastic, patch('cutup.composer.MistralClient') as mistral:
+            mistral.return_value.request.return_value = self.clean
             elastic.return_value.search.return_value = [photo('A')]
             elastic.return_value.glyph_sources.return_value = []
             with self.assertRaises(ProviderError) as error: compose(self.config,'😀','custom')

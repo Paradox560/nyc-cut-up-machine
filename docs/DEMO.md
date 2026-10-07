@@ -1,11 +1,12 @@
 # Three-minute hackathon demo
 
-The promise: **write something new using only words visible in historical NYC storefront photographs, and trace every output word back to its source.**
+The promise: **write something new with actual pieces of historical NYC storefront photographs, and reveal exactly where every word was cut.**
 
 ## Before presenting
 
 - Use the setup and import instructions in the repository README. Keep credentials in local configuration; close terminal tabs that might expose them.
 - Import a small set of actual NYC tax photographs with source links and attribution. Review and correct OCR against each photograph before approving its vocabulary. Choose enough legible storefronts to support the writing prompt.
+- Run word localization, inspect the crop contact sheet, and accept only correctly framed words before indexing. Words without locations cannot appear in a live print.
 - Index the approved sources and verify the configured Mistral and Elasticsearch connections. Rehearse the complete live search and composition once; service access alone does not establish a working demo.
 - Inspect the vocabulary before choosing a prompt. A narrow historical corpus may simply lack the words for a request; that limitation is part of the creative constraint.
 - Use synthetic sample mode only for explaining the interface or a clearly announced fallback. Its vocabulary is invented, its composition is a fixture, and it does not demonstrate a live service integration or archival evidence.
@@ -16,23 +17,23 @@ The local launch command is `python3 -m cutup --port 8765`. Start an initial imp
 
 “What if New York could write you a breakup letter using only the words it put on its buildings? This machine turns an archive into a vocabulary. Every word has to come from a reviewed photograph.”
 
-Show an actual imported photograph, its archive attribution, and the corrected storefront text. Explain that OCR is fallible and the reviewed text is what the composer may use.
+Show an actual imported photograph, its archive attribution, and the corrected storefront text. Explain that transcription and word locations are reviewed; the composer can use only words with accepted photograph crops.
 
 ## 0:25–1:10 — Retrieve and compose
 
 Request a breakup letter, poem, or other supported form using a prompt suited to the imported vocabulary.
 
-“Mistral embeds the request. Elasticsearch retrieves relevant storefront vocabulary using semantic and text search. Mistral receives the retrieved word IDs and selects their order. Application code validates the IDs and renders the source words.”
+“Mistral embeds the request. Elasticsearch retrieves storefront vocabulary and crop coordinates using semantic and text search. Mistral selects exact words from that vocabulary. Application code resolves their IDs, verifies the original photographs, and cuts out the actual pixels.”
 
 Show the retrieved sources, then the composition. Describe only the flow visibly exercised by this run. Do not describe a synthetic fallback as a live response.
 
 ## 1:10–1:50 — Prove a word
 
-Inspect an output word and follow its source attribution. Show its exact spelling in the corrected OCR and compare it with the image. Open a second word from another photograph to demonstrate that the result combines sources.
+Click an output word. Show the enlarged photo cutout, then its outlined rectangle in the full photograph. Open a second word from another photograph to demonstrate that the result combines actual photographic fragments. The source image's original grain and lettering should be visible in the print.
 
 “The model selects evidence IDs. It cannot insert a more convenient word. We preserve the original spelling and allow reuse and rearrangement.”
 
-Explain that an unknown ID, an ID from superseded OCR, or an unreviewed source causes rejection. These checks establish provenance to the reviewed text; the human comparison with the photograph establishes whether the OCR is accurate.
+Explain that unknown IDs, superseded transcription, missing crop coordinates, and changed image bytes are rejected. Visual review establishes that a crop spells the intended word. The app does not regenerate or typeset the live collage's words.
 
 ## 1:50–2:30 — Change the writing brief
 
@@ -44,7 +45,7 @@ If voice is configured and rehearsed, demonstrate the supported audio feature br
 
 “Mistral reads the photographs, embeds the meaning, and composes with constrained selections. Elasticsearch turns a growing city archive into retrievable vocabulary. The result is creative writing with inspectable evidence.”
 
-End on the composition and one visible source photograph. Present only capabilities implemented and exercised in the current build; describe any future voice, export, or expanded archive features as future work.
+Export the SVG poster and show that its photographic cutouts remain visible offline: the original image bytes and their crop coordinates are embedded. End on the composition and one visible source photograph. Present only capabilities exercised in the current build; describe untested voice or expanded archive features as future work.
 
 ## Honest fallback
 

@@ -25,7 +25,7 @@ were upscaled or modified.
 
 ## Import
 
-Run from the project root with Python 3.10 or newer. The importer uses only the
+Run from the project root with Python 3.11 or newer. The importer uses only the
 standard library and configuration from the ignored `.env.local` file.
 
 ```sh
@@ -82,9 +82,39 @@ may remain in the archive without contributing words. The item's address,
 borough, title, and attribution are metadata, and must never be added to the
 composition vocabulary merely because they describe the photograph.
 
-The mechanical guarantee is that every composed word maps to a reviewed source
-transcription. This is not automated proof that OCR matches a photograph, nor
-does a photographic citation provide a precise bounding box around a word.
+## Locate and inspect the actual pixels
+
+Install the Tesseract command-line tool, then run `python3 scripts/localize.py`.
+It matches detected words to the reviewed transcription without fuzzy spelling
+or fabricated geometry. Candidate rectangles and a contact sheet are written to
+`data/archive/localization/`, which is ignored by Git. No corpus changes occur
+at this stage.
+
+Open `review.html` in a browser. Each tile displays the original photograph
+through a bounded viewport. Check only crops that visibly contain the complete
+intended word, without misleading neighboring lettering. Download the accepted
+IDs and apply them with `python3 scripts/localize.py --accept /path/to/accepted-crop-ids.json`.
+The importer checks that neither the transcription nor the photograph changed
+since proposal generation. Run `python3 -m cutup index` to synchronize locations.
+
+Each source stores original image dimensions, its SHA-256 fingerprint, and
+`word_crops` keyed by immutable transcription token IDs. Each rectangle records
+pixel `x`, `y`, `width`, `height`, localization `method`, and `confidence`.
+Manually located rectangles use method `manual` and confidence `0` to indicate
+that no machine confidence score exists. Manual coordinates need the same
+visual review; they can be added to a proposal before acceptance.
+
+Live composition excludes words without accepted rectangles. Source-text edits
+clear previous locations. Before composing, the server checks original image
+fingerprints; before rendering, the browser checks fingerprints and decoded
+dimensions too. The poster displays those original pixels and its source drawer
+outlines the exact rectangle. The SVG export embeds source image bytes, so its
+cutouts remain visible without the server or network.
+
+These checks bind a crop to specific pixels; visual review establishes that
+those pixels actually spell the intended word. A rectangular cutout can retain
+some neighboring background, especially on slanted signs. No generative image
+model redraws, sharpens, or replaces the lettering.
 
 ## Expand the manifest
 

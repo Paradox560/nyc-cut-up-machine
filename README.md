@@ -2,7 +2,7 @@
 
 **Write something new using only words New York put on its buildings.**
 
-A found-poetry print shop built for the [Elastic × Mistral NYC Hack Night](https://github.com/AvenueJ/elastic-mistral-hacknight). It retrieves words from historical NYC storefront photographs, composes a poem or letter, and gives every printed word a clickable source. Export a standalone SVG poster with archive credits.
+A found-poetry print shop built for the [Elastic × Mistral NYC Hack Night](https://github.com/AvenueJ/elastic-mistral-hacknight). It retrieves words from historical NYC storefront photographs and assembles a poem or letter from **actual photographic cutouts**. Click a cutout to see its exact location in the original picture. Export a standalone SVG poster with embedded photographs and archive credits.
 
 Mistral reads and composes. Elasticsearch finds the vocabulary. Application code checks every word.
 
@@ -10,7 +10,7 @@ Mistral reads and composes. Elasticsearch finds the vocabulary. Application code
 
 ## Quick start
 
-Requires **Python 3.11+**. There are no runtime package dependencies.
+Requires **Python 3.11+**. The app has no Python package dependencies. Preparing new photographic word locations also requires the **Tesseract** command-line tool (tested with 5.5.2).
 
 ```sh
 git clone https://github.com/Paradox560/nyc-cut-up-machine.git
@@ -53,6 +53,18 @@ python3 -m cutup
 
 Open **Source drawer**. Inspect each image, correct the transcription, keep only clearly visible storefront words, and mark the source reviewed. Saving a review embeds the corrected text and writes it to Elasticsearch. Index all already-ingested sources with `python3 -m cutup index`.
 
+Next, locate the words in the actual images:
+
+```sh
+python3 scripts/localize.py
+# Open data/archive/localization/review.html in a browser.
+# Check only correctly framed words, then download the accepted crop IDs.
+python3 scripts/localize.py --accept /path/to/accepted-crop-ids.json
+python3 -m cutup index
+```
+
+Tesseract proposes exact-word bounding boxes; the review sheet shows the original pixels. Skewed or faint historical signs may need manually measured boxes, or can be omitted. Live composition uses only words with accepted locations. Editing a source transcription invalidates its locations, so localize and index that source again after corrections.
+
 The full manifest includes additional Manhattan storefronts with richer signage; increase `--limit` to ingest those. Review state is preserved on ordinary re-ingestion. The explicit OCR refresh option resets it. See [archive ingestion and attribution](docs/ARCHIVE.md) for details.
 
 If your account has vision/chat quota but its OCR API is rate-limited, select the explicit vision-transcription path:
@@ -70,8 +82,8 @@ For a custom collection, copy the schema in `data/seeds.json` and use `--manifes
 1. Describe the feeling or purpose: “a breakup letter that sounds like a shop closing.”
 2. Choose poem, love letter, breakup letter, or manifesto.
 3. **Cut it together** retrieves source vocabulary and composes with Mistral.
-4. Click a word to inspect its photograph and source transcription.
-5. Copy the words or export the print as SVG.
+4. Click a word to inspect its enlarged cutout and highlighted rectangle in the original photograph.
+5. Copy the words or export a standalone SVG containing the same photo pixels.
 
 A small collection cannot express every request. The model makes the closest found poem using available words; it cannot invent missing connective words. Reusing an existing word is allowed. The archive supplies the vocabulary, not a claimed historical poem or message.
 
@@ -79,17 +91,18 @@ A small collection cannot express every request. The model makes the closest fou
 
 ```text
 NYC Municipal Archives photographs
-        ↓ Mistral transcription → visual review
-Elasticsearch: source metadata + text + Mistral embeddings
+        ↓ Mistral transcription → visual review → word localization + crop review
+Elasticsearch: source metadata + text + pixel coordinates + Mistral embeddings
         ↓ BM25 and vector search combined with RRF
 Mistral: selects exact words from a constrained vocabulary
-        ↓ strict local verification, one bounded repair attempt
-Original source words → paper collage → clickable evidence / SVG
+        ↓ strict word, crop-boundary, and original-image fingerprint checks
+Original photograph pixels → cutout collage → highlighted evidence / embedded SVG
 ```
 
 - **Search is essential:** live compositions retrieve vocabulary from Elasticsearch using both lexical and semantic ranking. It is not an incidental log store.
 - **Provenance is enforced:** a JSON-schema enum constrains the model to retrieved spellings. The server maps selections to immutable source IDs and reconstructs the words from source text. Unknown words or IDs, stale transcriptions, malformed output, and excess length are rejected. Source-grounded style examples help small models form coherent phrases without supplying additional vocabulary.
 - **Review is separate from code validation:** proving a word exists in OCR does not prove the OCR is right. Live UI compositions use reviewed sources only.
+- **Pixels, not retyping:** every live word is a bounded viewport into its original JPEG/PNG. Both server and browser verify the image fingerprint; the browser also checks decoded dimensions. A missing crop or changed image produces an error. Export embeds each used original once and preserves crop coordinates, source links, and attribution.
 - **Snapshots survive edits:** each saved composition contains its source evidence at creation time. Later source corrections do not silently rewrite old prints.
 - **No quiet fallback:** live provider failures produce errors. They do not turn into synthetic poems labeled as live output.
 - **Optional voice:** Voxtral reads an existing verified composition when `MISTRAL_VOICE_ID` is configured. No browser TTS is substituted.
@@ -101,7 +114,7 @@ python3 -m unittest discover -s tests
 node --check web/app.js
 ```
 
-Tests cover provenance, invalid model output, source corrections, persistence, ingestion validation, API boundaries, and review/index synchronization. Tests do not require paid services; live service checks are explicit commands.
+Tests cover word and crop provenance, image fingerprints, invalid model output, source corrections, localization, persistence, ingestion validation, API boundaries, and review/index synchronization. Tests do not require paid services; live service checks are explicit commands.
 
 See [the three-minute demo script](docs/DEMO.md). The frontend is plain browser JavaScript and CSS; the backend uses Python's standard library. This is a local hackathon application, bound to loopback. Public deployment would need authentication, request limits, and a production HTTP server.
 

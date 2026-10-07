@@ -12,6 +12,9 @@ MAPPING = {"mappings": {"properties": {
     "borough": {"type": "keyword"}, "block": {"type": "keyword"}, "lot": {"type": "keyword"},
     "ocr_text": {"type": "text"}, "reviewed": {"type": "boolean"}, "synthetic": {"type": "boolean"},
     "words": {"type": "object", "enabled": False},
+    "word_crops": {"type": "object", "enabled": False},
+    "image_sha256": {"type": "keyword", "index": False},
+    "image_width": {"type": "integer"}, "image_height": {"type": "integer"},
     "embedding": {"type": "dense_vector", "dims": 1024, "index": True, "similarity": "cosine"},
     "image_url": {"type": "keyword", "index": False},
     "source_url": {"type": "keyword", "index": False}, "attribution": {"type": "text", "index": False},
@@ -40,6 +43,12 @@ class ElasticClient:
             if exc.code != "elasticsearch_404":
                 raise
             self.request("/" + self.config.index, payload=MAPPING, method="PUT")
+        else:
+            # Existing installations need the crop field disabled before indexing
+            # token-specific metadata, just like the derived words array.
+            self.request("/" + self.config.index + "/_mapping", method="PUT",
+                         payload={"properties": {key: MAPPING["mappings"]["properties"][key]
+                             for key in ("word_crops", "image_sha256", "image_width", "image_height")}})
 
     def index_source(self, source: dict) -> None:
         document = validate_source(source)

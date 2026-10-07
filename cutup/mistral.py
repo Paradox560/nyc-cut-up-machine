@@ -89,11 +89,14 @@ class MistralClient:
             raise ProviderError("Expected one 1024-dimensional Mistral embedding per input.")
         return [d["embedding"] for d in data]
 
-    def compose(self, messages: list[dict]) -> dict:
+    def compose(self, messages: list[dict], *, allowed_words: list[str] | None = None) -> dict:
+        item = {"type": "string"}
+        if allowed_words:
+            item["enum"] = allowed_words
         schema = {"type": "object", "properties": {"lines": {"type": "array", "items": {
-            "type": "array", "items": {"type": "string"}}}}, "required": ["lines"], "additionalProperties": False}
+            "type": "array", "items": item}}}, "required": ["lines"], "additionalProperties": False}
         result = self.request("/chat/completions", {
-            "model": self.config.chat_model, "messages": messages, "temperature": 0.8,
+            "model": self.config.chat_model, "messages": messages, "temperature": 0.45,
             "max_tokens": 3000,
             "response_format": {"type": "json_schema", "json_schema": {
                 "name": "cut_up_composition", "schema": schema, "strict": True}},

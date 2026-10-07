@@ -8,6 +8,7 @@ from unittest.mock import patch
 from cutup.composer import compose
 from cutup.config import Config
 from cutup.http_client import ProviderError
+from cutup.mistral import MistralClient
 from cutup.provenance import plain_text, validate_source
 from cutup.store import CorpusStore
 
@@ -81,8 +82,9 @@ class ComposerTests(unittest.TestCase):
     def test_one_invalid_selection_gets_one_bounded_repair(self):
         observed_messages = []
 
-        def model(messages):
+        def model(messages, *, allowed_words):
             observed_messages.append(deepcopy(messages))
+            self.assertEqual(allowed_words, [word["text"] for word in self.source["words"]])
             return {"lines": [["invented-word-id"]]} if len(observed_messages) == 1 else self.selected
 
         self.mistral.compose.side_effect = model
@@ -93,6 +95,64 @@ class ComposerTests(unittest.TestCase):
         self.assertIn("Validation failed", observed_messages[1][-1]["content"])
         self.assertEqual(sum(step["step"] == "Repair" for step in result["trace"]), 1)
         self.assertEqual(len(self.saved_results()), 1)
+
+    def test_literal_words_resolve_to_exact_original_source_tokens(self):
+        first = archive_source(text="MY CITY IS SWEET")
+        second = archive_source("archive-two", "CITY DRY O’NEILL’S")
+        self.elastic.search.return_value = [first, second]
+        self.mistral.compose.return_value = {"lines": [["O’NEILL’S", "CITY", "SWEET", "CITY"]]}
+        result = compose(self.config, "A sweet city")
+        expected = [second["words"][2], first["words"][1], first["words"][3], first["words"][1]]
+        self.assertEqual(result["lines"], [expected])
+        by_source = {source["id"]: source for source in result["sources"]}
+        for token in result["lines"][0]:
+            original = by_source[token["source_id"]]["ocr_text"]
+            self.assertEqual(original[token["start"]:token["end"]], token["text"])
+            self.assertNotEqual(token["id"], token["text"])
+        saved = CorpusStore(self.config.data_dir).get_composition(result["id"])
+        self.assertEqual(saved["lines"], [expected])
+
+    def test_unknown_or_modified_literal_words_fail_after_two_attempts(self):
+        for unknown in ["UNICORN", "love", "LOVE LOST", "LOVE!"]:
+            with self.subTest(unknown=unknown):
+                self.mistral.compose.reset_mock()
+                self.mistral.compose.return_value = {"lines": [[unknown]]}
+                with self.assertRaises(ProviderError) as raised:
+                    compose(self.config, "A lost love")
+                self.assertEqual(raised.exception.code, "provenance_rejected")
+                self.assertEqual(self.mistral.compose.call_count, 2)
+                self.assertEqual(self.saved_results(), [])
+
+    def test_schema_allowlist_matches_exact_supplied_unique_spellings(self):
+        self.source = archive_source(text="LOVE love LOST 1940 AND FOUND")
+        self.elastic.search.return_value = [self.source]
+        self.mistral.compose.return_value = {"lines": [["LOVE", "LOST"]]}
+        compose(self.config, "A lost love")
+        call = self.mistral.compose.call_args
+        data = json.loads(call.args[0][1]["content"])
+        allowed_words = call.kwargs["allowed_words"]
+        self.assertEqual(allowed_words, ["LOVE", "LOST", "AND", "FOUND"])
+        self.assertEqual(allowed_words, [word["text"] for word in data["vocabulary"]])
+        self.assertEqual(allowed_words, [word["id"] for word in data["vocabulary"]])
+
+    def test_style_examples_use_only_words_present_in_retrieved_vocabulary(self):
+        self.source = archive_source(text="MY CITY IS SWEET SAVINGS ACCOUNT DRY THE TO LET NEW YORK")
+        self.elastic.search.return_value = [self.source]
+        self.mistral.compose.return_value = {"lines": [["MY", "CITY"]]}
+        compose(self.config, "A sweet city")
+        call = self.mistral.compose.call_args
+        examples = json.loads(call.args[0][1]["content"])["style_examples"]
+        self.assertTrue(examples)
+        allowed = set(call.kwargs["allowed_words"])
+        self.assertTrue(all(word in allowed for example in examples for line in example for word in line))
+
+    def test_style_examples_are_omitted_when_their_words_are_missing(self):
+        self.source = archive_source(text="MY CITY IS DRY")
+        self.elastic.search.return_value = [self.source]
+        self.mistral.compose.return_value = {"lines": [["MY", "CITY"]]}
+        compose(self.config, "A dry city")
+        messages = self.mistral.compose.call_args.args[0]
+        self.assertEqual(json.loads(messages[1]["content"])["style_examples"], [])
 
     def test_two_invalid_selections_fail_without_saving(self):
         self.mistral.compose.return_value = {"lines": [["invented-word-id"]]}
@@ -154,6 +214,24 @@ class ComposerTests(unittest.TestCase):
         self.assertEqual(result["mode"], "demo")
         self.assertTrue(all(source["synthetic"] for source in result["sources"]))
         self.assertIn("does not interpret your prompt", " ".join(result["warnings"]))
+
+
+class MistralCompositionSchemaTests(unittest.TestCase):
+    def test_allowed_spellings_reach_the_structured_output_schema(self):
+        client = MistralClient(Config())
+        words = ["MY", "CITY", "O’NEILL’S"]
+        output = {"lines": [["MY", "CITY"]]}
+        response = {"choices": [{"message": {"content": json.dumps(output)}}]}
+        with patch.object(client, "request", return_value=response) as request:
+            result = client.compose([{"role": "user", "content": "A poem"}], allowed_words=words)
+        self.assertEqual(result, output)
+        path, payload = request.call_args.args
+        self.assertEqual(path, "/chat/completions")
+        structured = payload["response_format"]["json_schema"]
+        self.assertTrue(structured["strict"])
+        schema = structured["schema"]
+        self.assertFalse(schema["additionalProperties"])
+        self.assertEqual(schema["properties"]["lines"]["items"]["items"]["enum"], words)
 
 
 if __name__ == "__main__":

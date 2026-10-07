@@ -1,4 +1,4 @@
-"""The model selects IDs; trusted code renders the original words."""
+"""Resolve selected vocabulary to IDs; trusted code renders the original words."""
 
 from hashlib import sha256
 import re

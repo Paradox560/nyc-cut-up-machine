@@ -1,4 +1,4 @@
-"""Retrieve -> select word IDs -> validate -> render; never silently fake live output."""
+"""Retrieve -> select words -> resolve IDs -> validate -> render; no fake live output."""
 
 from datetime import datetime, timezone
 import json

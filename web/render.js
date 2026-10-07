@@ -102,6 +102,10 @@ export function renderSourceDialog(container, source, { onSave, snapshot = false
   container.append(sourceImage(source, 'source-dialog-image'));
   container.append(element('p', 'source-dialog-label', 'Words from this source'));
   container.append(element('p', 'source-transcription', source.ocr_text));
+  if (source.transcription_method) {
+    const method = source.transcription_method === 'vision' ? 'Vision transcription' : 'OCR transcription';
+    container.append(element('p', 'source-attribution', `${method}${source.transcription_model ? ` · ${source.transcription_model}` : ''}${source.reviewed ? ' · visually reviewed' : ' · awaiting review'}`));
+  }
   container.append(element('p', 'source-attribution', source.attribution || 'No attribution was provided. Verify the source before use.'));
   const url = safeURL(source.source_url);
   if (url) {

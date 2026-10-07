@@ -80,13 +80,13 @@ NYC Municipal Archives photographs
         ↓ Mistral transcription → visual review
 Elasticsearch: source metadata + text + Mistral embeddings
         ↓ BM25 and vector search combined with RRF
-Mistral: selects immutable word IDs from retrieved vocabulary
+Mistral: selects exact words from a constrained vocabulary
         ↓ strict local verification, one bounded repair attempt
 Original source words → paper collage → clickable evidence / SVG
 ```
 
 - **Search is essential:** live compositions retrieve vocabulary from Elasticsearch using both lexical and semantic ranking. It is not an incidental log store.
-- **Provenance is enforced:** the model returns IDs, not prose. The server reconstructs words from source text. Unknown IDs, stale transcriptions, malformed output, or excess length are rejected.
+- **Provenance is enforced:** a JSON-schema enum constrains the model to retrieved spellings. The server maps selections to immutable source IDs and reconstructs the words from source text. Unknown words or IDs, stale transcriptions, malformed output, and excess length are rejected. Source-grounded style examples help small models form coherent phrases without supplying additional vocabulary.
 - **Review is separate from code validation:** proving a word exists in OCR does not prove the OCR is right. Live UI compositions use reviewed sources only.
 - **Snapshots survive edits:** each saved composition contains its source evidence at creation time. Later source corrections do not silently rewrite old prints.
 - **No quiet fallback:** live provider failures produce errors. They do not turn into synthetic poems labeled as live output.

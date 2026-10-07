@@ -1,4 +1,4 @@
-# NYC Cut-Up Machine
+# StreetScript
 
 **Write something new using only words New York put on its buildings.**
 
@@ -6,7 +6,7 @@ A found-poetry print shop built for the [Elastic × Mistral NYC Hack Night](http
 
 Mistral reads and composes. Elasticsearch finds words and a reusable photographic alphabet. Application code checks every cutout.
 
-![NYC Cut-Up Machine composing from verified NYC storefront words](docs/preview.png)
+![StreetScript composing from verified NYC storefront words](docs/preview.png)
 
 ## Quick start
 

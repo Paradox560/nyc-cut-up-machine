@@ -135,6 +135,24 @@ class ServerTests(unittest.TestCase):
             elastic.assert_not_called()
             mistral.assert_not_called()
 
+    def test_words_route_returns_ranked_photographs_from_elasticsearch(self):
+        hits = [{"rank": 1, "source_id": "archive-one", "title": "Whitehall Street", "words": ["LOST", "OPEN"]}]
+        with patch("cutup.server.ElasticClient") as elastic:
+            elastic.return_value.find_words.return_value = hits
+            status, result, _ = self.request("/api/words?q=loss")
+        self.assertEqual(status, 200)
+        self.assertEqual(result, {"mode": "live", "results": hits})
+        elastic.return_value.find_words.assert_called_once_with("loss")
+
+    def test_words_route_rejects_too_short_or_too_long_queries(self):
+        with patch("cutup.server.ElasticClient") as elastic:
+            for path in ["/api/words", "/api/words?q=", "/api/words?q=a", "/api/words?q=" + "x" * 201]:
+                with self.subTest(path=path[:30]):
+                    status, result, _ = self.request(path)
+                    self.assertEqual(status, 400)
+                    self.assertEqual(result["code"], "invalid_request")
+            elastic.assert_not_called()
+
     def test_malformed_json_and_non_object_bodies_are_rejected(self):
         for body in [b"{bad json", b"[]", b"null", b'"a string"']:
             with self.subTest(body=body):

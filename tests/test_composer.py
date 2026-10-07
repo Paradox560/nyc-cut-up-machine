@@ -60,6 +60,8 @@ class ComposerTests(unittest.TestCase):
         self.addCleanup(self.mistral_patch.stop)
         self.elastic.search.return_value = [self.source]
         self.mistral.compose.return_value = self.selected
+        self.clean = {"results": [{"categories": {"hate_and_discrimination": False}, "category_scores": {"hate_and_discrimination": 0.001}}]}
+        self.mistral.request.return_value = self.clean
 
     def saved_results(self):
         return list((self.config.data_dir / "compositions").glob("*.json"))
@@ -80,6 +82,34 @@ class ComposerTests(unittest.TestCase):
                     compose(self.config, "A test poem", form)
         self.elastic.search.assert_not_called()
         self.mistral.compose.assert_not_called()
+
+    def test_flagged_brief_is_rejected_before_retrieval(self):
+        self.mistral.request.return_value = {"results": [{"categories": {"violence_and_threats": True}, "category_scores": {"violence_and_threats": 0.97}}]}
+        with self.assertRaises(ValueError) as ctx:
+            compose(self.config, "A threatening letter", "poem")
+        self.assertIn("violence_and_threats", str(ctx.exception))
+        self.elastic.search.assert_not_called()
+        self.mistral.compose.assert_not_called()
+        self.assertEqual(self.saved_results(), [])
+
+    def test_flagged_output_is_not_saved_or_returned(self):
+        verdicts = [self.clean, {"results": [{"categories": {"hate_and_discrimination": True}, "category_scores": {"hate_and_discrimination": 0.9}}]}]
+        self.mistral.request.side_effect = verdicts
+        with self.assertRaises(ProviderError) as ctx:
+            compose(self.config, "A lost love", "poem")
+        self.assertEqual(ctx.exception.code, "moderation_flagged")
+        self.assertEqual(self.saved_results(), [])
+
+    def test_moderation_steps_appear_in_the_trace(self):
+        result = compose(self.config, "A lost love", "poem")
+        self.assertEqual([s["step"] for s in result["trace"]].count("Moderation"), 2)
+
+    def test_moderation_can_be_switched_off_and_says_so(self):
+        with patch.dict("os.environ", {"CUTUP_MODERATION": "off"}):
+            self.mistral.request.reset_mock()
+            result = compose(self.config, "A lost love", "poem")
+        self.mistral.request.assert_not_called()
+        self.assertTrue(any("Moderation is switched off" in w for w in result["warnings"]))
 
     def test_new_forms_are_accepted_and_send_their_style_hint(self):
         for form, fragment in [("eviction-notice", "bureaucratic"), ("shop-sign", "sign-like"), ("headline", "headline")]:

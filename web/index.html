@@ -9,6 +9,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/styles.css" />
     <script type="module" src="/app.js"></script>
+    <script type="module" src="/vocab.js"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to the print shop</a>
@@ -59,6 +60,7 @@
             <p class="request-status" id="request-status" role="status" aria-live="polite"></p>
           </form>
           <div class="try-section"><p class="eyebrow">Or pull a thread</p><button class="sample-prompt" type="button" data-prompt="Write a breakup letter using the language of closed shops and last chances." data-form="breakup-letter"><span>A final sale. A final goodbye.</span><span aria-hidden="true">↗</span></button><button class="sample-prompt" type="button" data-prompt="Write a manifesto for people who keep the city awake." data-form="manifesto"><span>A manifesto for the night shift.</span><span aria-hidden="true">↗</span></button><button class="sample-prompt" type="button" data-prompt="Write a tiny poem about finding a little hope on a long walk through New York." data-form="poem"><span>Something small. Something hopeful.</span><span aria-hidden="true">↗</span></button></div>
+          <div class="words-box"><p class="eyebrow">Or search the vocabulary</p><label class="sr-only" for="words-input">Find words that feel like</label><input id="words-input" type="search" minlength="2" maxlength="200" placeholder="Find words that feel like… loss" autocomplete="off" /><p class="words-status" id="words-status" role="status" aria-live="polite"></p><ol class="words-results" id="words-results"></ol></div>
           <div class="workshop-note"><span class="note-star" aria-hidden="true">✳</span><p>Nothing from nowhere.<br />Real photographs. Found words. Cut and rearranged, never retyped.</p></div>
         </aside>
 

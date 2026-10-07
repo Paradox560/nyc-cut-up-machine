@@ -8,8 +8,9 @@ from .config import Config
 from .demo import demo_selection, demo_sources
 from .http_client import ProviderError
 from .providers import ElasticClient, MistralClient
-from .provenance import ProvenanceError, resolve_lines, verify_crop_images
+from .provenance import ProvenanceError, plain_text, resolve_lines, verify_crop_images
 from .store import CorpusStore
+from . import moderation
 
 FORMS = {"poem", "love-letter", "breakup-letter", "manifesto", "eviction-notice", "shop-sign", "headline"}
 # One line of tone guidance per form. It changes the voice, never the rule that every word must come from the archive.
@@ -51,6 +52,14 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
     else:
         if not config.configured:
             raise ProviderError("Set the Mistral and Elasticsearch credentials, or start with --demo.", status=409)
+        client = MistralClient(config)
+        if moderation.enabled():
+            verdict = moderation.check_text(client, prompt)
+            if verdict["flagged"]:
+                raise ValueError("Mistral moderation flagged the brief (" + ", ".join(verdict["categories"]) + "). Try a different brief.")
+            trace.append({"step": "Moderation", "detail": "Mistral moderation passed the brief."})
+        else:
+            warnings.append("Moderation is switched off (CUTUP_MODERATION=off).")
         if reuse_id:
             # Rearrange: reuse the exact vocabulary of an earlier composition. No new retrieval.
             store = CorpusStore(config.data_dir)
@@ -113,7 +122,6 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
             "vocabulary": [{"id": w["text"], "text": w["text"]} for w in words],
             "style_examples": examples,
         }, ensure_ascii=False)}]
-        client = MistralClient(config)
         for attempt in range(2):
             payload = client.compose(messages, allowed_words=list(aliases))
             try:
@@ -129,6 +137,11 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
                                  {"role": "user", "content": "Validation failed: " + str(exc) + " Return only exact word strings from the vocabulary, with no extra words."}])
                 trace.append({"step": "Repair", "detail": "Rejected unsupported output and requested a constrained revision."})
         trace.append({"step": "Mistral composition", "detail": f"{config.chat_model} selected from {len(words)} allowed words; each was resolved to its immutable source token."})
+        if moderation.enabled():
+            verdict = moderation.check_text(client, plain_text(lines))
+            if verdict["flagged"]:
+                raise ProviderError("Mistral moderation flagged the finished text (" + ", ".join(verdict["categories"]) + "). It was not shown or saved.", status=422, code="moderation_flagged")
+            trace.append({"step": "Moderation", "detail": "Mistral moderation passed the finished text."})
         if include_unreviewed:
             warnings.append("Includes unreviewed transcription. Word provenance is checked against text that has not been visually verified against the photograph.")
     used_ids = {word["source_id"] for line in lines for word in line}

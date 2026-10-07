@@ -73,3 +73,12 @@ class ElasticClient:
             ], "rank_window_size": 50, "rank_constant": 60}},
         })
         return [validate_source(hit["_source"]) for hit in result.get("hits", {}).get("hits", [])]
+
+    def find_words(self, query: str, *, limit: int = 8) -> list[dict]:
+        """Rank reviewed photographs for a query (BM25 + Mistral vectors, RRF) and show their words."""
+        results = []
+        for rank, source in enumerate(self.search(query, include_unreviewed=False, limit=limit), start=1):
+            words = [w["text"] for w in source["words"] if not w["text"].isdigit()]
+            results.append({"rank": rank, "source_id": source["id"], "title": source.get("title", ""),
+                            "words": words[:12]})
+        return results

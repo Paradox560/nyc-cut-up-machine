@@ -28,6 +28,7 @@ async function request(path, { method = 'GET', body, signal, audio = false } = {
 export const api = {
   status: (signal) => request('/api/status', { signal }),
   sources: (signal) => request('/api/sources', { signal }),
+  words: (query, signal) => request('/api/words?q=' + encodeURIComponent(query), { signal }),
   compose: (body, signal) => request('/api/compose', { method: 'POST', body, signal }),
   review: (body, signal) => request('/api/sources/review', { method: 'POST', body, signal }),
   speech: (compositionId, signal) => request('/api/speech', { method: 'POST', body: { composition_id: compositionId }, signal, audio: true }),

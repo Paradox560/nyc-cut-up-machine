@@ -7,7 +7,7 @@ import mimetypes
 import re
 from pathlib import Path
 from threading import BoundedSemaphore
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from .composer import compose
 from .config import ROOT, load_config
@@ -97,6 +97,17 @@ class Handler(BaseHTTPRequestHandler):
                     "corpus_count": len(corpus), "reviewed_count": sum(s["reviewed"] for s in corpus),
                     "models": {"chat": config.chat_model, "ocr": config.ocr_model, "embed": config.embed_model},
                     "voice_enabled": bool(config.voice_id and config.mistral_api_key and not demo)})
+            if method == "GET" and path == "/api/words":
+                query = (parse_qs(urlparse(self.path).query).get("q") or [""])[0].strip()
+                if not 2 <= len(query) <= 200:
+                    raise ValueError("Search for 2 to 200 characters.")
+                if demo:
+                    needle = query.casefold()
+                    hits = [s for s in demo_sources() if needle in s["ocr_text"].casefold()] or demo_sources()[:4]
+                    return self.json({"mode": "demo", "results": [
+                        {"rank": i, "source_id": s["id"], "title": s["title"],
+                         "words": [w["text"] for w in s["words"]][:12]} for i, s in enumerate(hits, 1)]})
+                return self.json({"mode": "live", "results": ElasticClient(config).find_words(query)})
             if method == "GET" and path == "/api/sources":
                 return self.json({"sources": demo_sources() if demo else store.all()})
             if method == "POST":

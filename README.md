@@ -6,6 +6,8 @@ A found-poetry print shop built for the [Elastic × Mistral NYC Hack Night](http
 
 Mistral reads and composes. Elasticsearch finds the vocabulary. Application code checks every word.
 
+![NYC Cut-Up Machine composing from verified NYC storefront words](docs/preview.png)
+
 ## Quick start
 
 Requires **Python 3.11+**. There are no runtime package dependencies.
@@ -41,7 +43,7 @@ python3 -m cutup check
 
 ### Load NYC photographs
 
-The manifest contains verified Municipal Archives item records. Start small:
+The manifest contains verified Municipal Archives item records, ordered with legible Manhattan storefronts first. Start small:
 
 ```sh
 python3 scripts/ingest.py --limit 3 --download-only

@@ -122,6 +122,10 @@ class Handler(BaseHTTPRequestHandler):
                             raise ValueError("reviewed must be true or false.")
                         source.setdefault("ocr_original", source["ocr_text"])
                         if "ocr_text" in payload:
+                            if payload["ocr_text"] != source["ocr_text"]:
+                                source["word_crops"] = []
+                                source.pop("crop_review_method", None)
+                                source.pop("crop_reviewed_at", None)
                             source["ocr_text"] = payload["ocr_text"]
                         source["reviewed"] = payload["reviewed"]
                         source["reviewed_at"] = datetime.now(timezone.utc).isoformat() if source["reviewed"] else None

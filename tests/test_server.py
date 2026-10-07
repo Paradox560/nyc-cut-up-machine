@@ -1,4 +1,5 @@
 from http.client import HTTPConnection
+from hashlib import sha256
 import json
 from pathlib import Path
 import tempfile
@@ -188,6 +189,42 @@ class ServerTests(unittest.TestCase):
         self.assertIsNone(indexed["reviewed_at"])
         self.assertFalse(result["source"]["reviewed"])
         self.assertFalse(self.store.get("archive-one")["reviewed"])
+
+    def test_transcription_edit_clears_old_crops_before_reindex_and_save(self):
+        self.add_source_crop()
+        with patch("cutup.server.ElasticClient") as elastic:
+            status, result, _ = self.request("/api/sources/review", method="POST", payload={
+                "id": "archive-one", "reviewed": True, "ocr_text": "OPEN EVERY NIGHT",
+            })
+            indexed = elastic.return_value.index_source.call_args.args[0]
+        self.assertEqual(status, 200)
+        self.assertEqual(indexed["word_crops"], [])
+        self.assertTrue(all("crop" not in word for word in indexed["words"]))
+        self.assertNotIn("crop_reviewed_at", indexed)
+        self.assertEqual(result["source"]["word_crops"], [])
+        self.assertEqual(self.store.get("archive-one")["word_crops"], [])
+
+    def test_review_with_unchanged_text_preserves_pixel_locations(self):
+        cropped = self.add_source_crop()
+        with patch("cutup.server.ElasticClient"):
+            status, result, _ = self.request("/api/sources/review", method="POST", payload={
+                "id": "archive-one", "reviewed": True, "ocr_text": cropped["ocr_text"],
+            })
+        self.assertEqual(status, 200)
+        self.assertEqual(result["source"]["word_crops"], cropped["word_crops"])
+        self.assertEqual(self.store.get("archive-one")["words"][0]["crop"], cropped["words"][0]["crop"])
+
+    def add_source_crop(self):
+        word = self.record["words"][0]
+        return self.store.upsert({
+            **self.record, "image_url": "/archive/photo.jpg", "image_width": 100,
+            "image_height": 50, "image_sha256": sha256(b"test-photo").hexdigest(),
+            "crop_reviewed_at": "test-timestamp", "crop_review_method": "test-review",
+            "word_crops": [{
+                "word_id": word["id"], "text": word["text"], "x": 0, "y": 0,
+                "width": 30, "height": 20, "method": "test-localization", "confidence": 99,
+            }],
+        })
 
     def test_review_rejects_invalid_types_without_reindexing_or_saving(self):
         invalid = [

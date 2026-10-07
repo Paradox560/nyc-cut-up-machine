@@ -6,6 +6,45 @@
   "seed_reference": "https://github.com/AvenueJ/elastic-mistral-hacknight/blob/main/nyc_tax_photos.ipynb",
   "sources": [
     {
+      "identifier": "nynyma_rec0040_1_00004_0009",
+      "title": "57-58 Whitehall Street",
+      "borough": "Manhattan (New York, N.Y.)",
+      "block": "4",
+      "lot": "9",
+      "start_date": "1939",
+      "end_date": "1941",
+      "id": "IO_6b3746fb-af6e-4619-93a7-525b3962af73",
+      "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_6b3746fb-af6e-4619-93a7-525b3962af73/",
+      "download_url": "https://nycrecords.access.preservica.com/download/file/IO_6b3746fb-af6e-4619-93a7-525b3962af73",
+      "attribution": "57-58 Whitehall Street, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
+    },
+    {
+      "identifier": "nynyma_rec0040_1_00004_0013",
+      "title": "51 Whitehall Street",
+      "borough": "Manhattan (New York, N.Y.)",
+      "block": "4",
+      "lot": "13",
+      "start_date": "1939",
+      "end_date": "1941",
+      "id": "IO_12073a22-83eb-417b-ad3b-cf5ee87ac857",
+      "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_12073a22-83eb-417b-ad3b-cf5ee87ac857/",
+      "download_url": "https://nycrecords.access.preservica.com/download/file/IO_12073a22-83eb-417b-ad3b-cf5ee87ac857",
+      "attribution": "51 Whitehall Street, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
+    },
+    {
+      "identifier": "nynyma_rec0040_1_00004_0011",
+      "title": "55 Whitehall Street",
+      "borough": "Manhattan (New York, N.Y.)",
+      "block": "4",
+      "lot": "11",
+      "start_date": "1939",
+      "end_date": "1941",
+      "id": "IO_81a62a68-fdc1-4364-8c64-1c7715997584",
+      "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_81a62a68-fdc1-4364-8c64-1c7715997584/",
+      "download_url": "https://nycrecords.access.preservica.com/download/file/IO_81a62a68-fdc1-4364-8c64-1c7715997584",
+      "attribution": "55 Whitehall Street, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
+    },
+    {
       "id": "IO_039ddc71-0796-4a01-9043-aae5b1cf2080",
       "identifier": "nynyma_rec0040_5_00001_0001",
       "title": "17-23 Victory Boulevard",
@@ -110,32 +149,6 @@
       "attribution": "61 Whitehall Street, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
     },
     {
-      "identifier": "nynyma_rec0040_1_00004_0009",
-      "title": "57-58 Whitehall Street",
-      "borough": "Manhattan (New York, N.Y.)",
-      "block": "4",
-      "lot": "9",
-      "start_date": "1939",
-      "end_date": "1941",
-      "id": "IO_6b3746fb-af6e-4619-93a7-525b3962af73",
-      "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_6b3746fb-af6e-4619-93a7-525b3962af73/",
-      "download_url": "https://nycrecords.access.preservica.com/download/file/IO_6b3746fb-af6e-4619-93a7-525b3962af73",
-      "attribution": "57-58 Whitehall Street, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
-    },
-    {
-      "identifier": "nynyma_rec0040_1_00004_0011",
-      "title": "55 Whitehall Street",
-      "borough": "Manhattan (New York, N.Y.)",
-      "block": "4",
-      "lot": "11",
-      "start_date": "1939",
-      "end_date": "1941",
-      "id": "IO_81a62a68-fdc1-4364-8c64-1c7715997584",
-      "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_81a62a68-fdc1-4364-8c64-1c7715997584/",
-      "download_url": "https://nycrecords.access.preservica.com/download/file/IO_81a62a68-fdc1-4364-8c64-1c7715997584",
-      "attribution": "55 Whitehall Street, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
-    },
-    {
       "identifier": "nynyma_rec0040_1_00004_0012",
       "title": "53 Whitehall Street",
       "borough": "Manhattan (New York, N.Y.)",
@@ -147,19 +160,6 @@
       "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_9a6f5279-cac4-4cbe-a2bf-f4dec72f7286/",
       "download_url": "https://nycrecords.access.preservica.com/download/file/IO_9a6f5279-cac4-4cbe-a2bf-f4dec72f7286",
       "attribution": "53 Whitehall Street, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
-    },
-    {
-      "identifier": "nynyma_rec0040_1_00004_0013",
-      "title": "51 Whitehall Street",
-      "borough": "Manhattan (New York, N.Y.)",
-      "block": "4",
-      "lot": "13",
-      "start_date": "1939",
-      "end_date": "1941",
-      "id": "IO_12073a22-83eb-417b-ad3b-cf5ee87ac857",
-      "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_12073a22-83eb-417b-ad3b-cf5ee87ac857/",
-      "download_url": "https://nycrecords.access.preservica.com/download/file/IO_12073a22-83eb-417b-ad3b-cf5ee87ac857",
-      "attribution": "51 Whitehall Street, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
     },
     {
       "identifier": "nynyma_rec0040_1_00004_0014",

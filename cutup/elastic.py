@@ -13,6 +13,9 @@ MAPPING = {"mappings": {"properties": {
     "ocr_text": {"type": "text"}, "reviewed": {"type": "boolean"}, "synthetic": {"type": "boolean"},
     "words": {"type": "object", "enabled": False},
     "word_crops": {"type": "object", "enabled": False},
+    "letter_crops": {"type": "object", "enabled": False},
+    "letters": {"type": "object", "enabled": False},
+    "letter_chars": {"type": "keyword"}, "has_letters": {"type": "boolean"},
     "image_sha256": {"type": "keyword", "index": False},
     "image_width": {"type": "integer"}, "image_height": {"type": "integer"},
     "embedding": {"type": "dense_vector", "dims": 1024, "index": True, "similarity": "cosine"},
@@ -48,13 +51,16 @@ class ElasticClient:
             # token-specific metadata, just like the derived words array.
             self.request("/" + self.config.index + "/_mapping", method="PUT",
                          payload={"properties": {key: MAPPING["mappings"]["properties"][key]
-                             for key in ("word_crops", "image_sha256", "image_width", "image_height")}})
+                             for key in ("word_crops", "letter_crops", "letters", "letter_chars", "has_letters",
+                                         "image_sha256", "image_width", "image_height")}})
 
     def index_source(self, source: dict) -> None:
         document = validate_source(source)
         if document.get("synthetic"):
             raise ValueError("Synthetic fixtures must not enter the archival index.")
         self.ensure_index()
+        document["letter_chars"] = sorted({glyph["text"].casefold() for glyph in document["letters"]})
+        document["has_letters"] = bool(document["letters"])
         document["embedding"] = MistralClient(self.config).embed([document["ocr_text"]])[0]
         self.request(f"/{self.config.index}/_doc/{quote(document['id'], safe='')}?refresh=wait_for",
                      payload=document, method="PUT")
@@ -82,3 +88,14 @@ class ElasticClient:
             results.append({"rank": rank, "source_id": source["id"], "title": source.get("title", ""),
                             "words": words[:12]})
         return results
+
+    def glyph_sources(self, *, include_unreviewed: bool = False) -> list[dict]:
+        """Supplement semantic retrieval with a reusable photographed alphabet."""
+        filters = [{"term": {"has_letters": True}}]
+        if not include_unreviewed:
+            filters.append({"term": {"reviewed": True}})
+        result = self.request(f"/{self.config.index}/_search", method="POST", payload={
+            "size": 64, "_source": {"excludes": ["embedding"]}, "sort": [{"id": "asc"}],
+            "query": {"bool": {"filter": filters, "must_not": [{"term": {"synthetic": True}}]}},
+        })
+        return [validate_source(hit["_source"]) for hit in result.get("hits", {}).get("hits", [])]

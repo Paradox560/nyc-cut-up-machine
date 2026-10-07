@@ -48,6 +48,10 @@ def load_config(project_root: Path = ROOT) -> Config:
     endpoint = values.get("ELASTICSEARCH_URL", "").strip().rstrip("/")
     if endpoint:
         parsed = urlparse(endpoint)
+        try:
+            parsed.port
+        except ValueError:
+            raise ValueError("ELASTICSEARCH_URL has an invalid port.") from None
         local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}
         if not (parsed.scheme == "https" or local_http) or not parsed.hostname:
             raise ValueError("ELASTICSEARCH_URL must use HTTPS (HTTP is allowed for localhost).")

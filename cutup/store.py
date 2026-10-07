@@ -13,10 +13,15 @@ LOCK = RLock()
 
 def atomic_json(path: Path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
-        json.dump(value, handle, ensure_ascii=False, indent=2)
-        name = handle.name
-    Path(name).replace(path)
+    name = None
+    try:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
+            name = handle.name
+            json.dump(value, handle, ensure_ascii=False, indent=2)
+        Path(name).replace(path)
+    finally:
+        if name:
+            Path(name).unlink(missing_ok=True)
 
 
 class CorpusStore:

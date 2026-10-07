@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "collection": "1940s Tax Department photographs",
+  "catalog": "New York City Municipal Archives",
+  "metadata_verified_at": "2026-10-07",
+  "seed_reference": "https://github.com/AvenueJ/elastic-mistral-hacknight/blob/main/nyc_tax_photos.ipynb",
+  "sources": [
+    {
+      "id": "IO_039ddc71-0796-4a01-9043-aae5b1cf2080",
+      "identifier": "nynyma_rec0040_5_00001_0001",
+      "title": "17-23 Victory Boulevard",
+      "borough": "Staten Island (New York, N.Y.)",
+      "block": "1",
+      "lot": "1",
+      "start_date": "1939",
+      "end_date": "1941",
+      "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_039ddc71-0796-4a01-9043-aae5b1cf2080/",
+      "download_url": "https://nycrecords.access.preservica.com/download/file/IO_039ddc71-0796-4a01-9043-aae5b1cf2080",
+      "attribution": "17-23 Victory Boulevard, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
+    },
+    {
+      "id": "IO_02dbfda8-e39f-4254-b65f-23b8933201dd",
+      "identifier": "nynyma_rec0040_5_00002_0728",
+      "title": "453 Richmond Terrace",
+      "borough": "Staten Island (New York, N.Y.)",
+      "block": "2",
+      "lot": "728",
+      "start_date": "1939",
+      "end_date": "1941",
+      "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_02dbfda8-e39f-4254-b65f-23b8933201dd/",
+      "download_url": "https://nycrecords.access.preservica.com/download/file/IO_02dbfda8-e39f-4254-b65f-23b8933201dd",
+      "attribution": "453 Richmond Terrace, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
+    },
+    {
+      "id": "IO_13d2ff2f-ae36-4405-a02e-0eec3cea1db0",
+      "identifier": "nynyma_rec0040_5_00002_0720",
+      "title": "427 Richmond Terrace",
+      "borough": "Staten Island (New York, N.Y.)",
+      "block": "2",
+      "lot": "720",
+      "start_date": "1939",
+      "end_date": "1941",
+      "source_url": "https://nycrecords.access.preservica.com/uncategorized/IO_13d2ff2f-ae36-4405-a02e-0eec3cea1db0/",
+      "download_url": "https://nycrecords.access.preservica.com/download/file/IO_13d2ff2f-ae36-4405-a02e-0eec3cea1db0",
+      "attribution": "427 Richmond Terrace, 1940s Tax Department photographs, Courtesy of the Municipal Archives, City of New York."
+    }
+  ]
+}

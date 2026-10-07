@@ -1,4 +1,4 @@
-Self-hosted fonts used by NYC Cut-Up Machine
+Self-hosted fonts used by StreetScript
 
 DM Sans (Latin variable subset, weights 400–700)
 Source: https://fonts.google.com/specimen/DM+Sans

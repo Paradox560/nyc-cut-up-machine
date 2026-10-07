@@ -10,7 +10,7 @@ from .store import CorpusStore
 
 
 def main():
-    parser = argparse.ArgumentParser(description="NYC Cut-Up Machine")
+    parser = argparse.ArgumentParser(description="StreetScript")
     parser.add_argument("command", nargs="?", choices=["serve", "check", "index"], default="serve")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--demo", action="store_true", help="Use clearly labeled synthetic fixtures without API calls")

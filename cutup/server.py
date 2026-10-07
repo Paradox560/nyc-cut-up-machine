@@ -29,7 +29,7 @@ class AppServer(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "CutUp/0.1"
+    server_version = "StreetScript/0.1"
 
     def log_message(self, fmt, *args):
         # Do not log prompts, source text, query parameters, or credentials.
@@ -204,7 +204,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def serve(port: int = 8765, *, demo: bool = False):
     server = AppServer(("127.0.0.1", port), demo=demo)
-    print(f"NYC Cut-Up Machine: http://127.0.0.1:{server.server_port}", flush=True)
+    print(f"StreetScript: http://127.0.0.1:{server.server_port}", flush=True)
     print("Mode: explicit synthetic demo" if demo else "Mode: live when credentials are configured", flush=True)
     try:
         server.serve_forever()

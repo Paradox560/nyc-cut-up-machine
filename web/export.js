@@ -5,7 +5,12 @@ export function plainText(composition) {
 }
 
 function wrapText(text, limit = 102) {
-  const words = text.split(/\s+/);
+  const words = text.split(/\s+/).flatMap((word) => {
+    if (word.length <= limit) return [word];
+    const chunks = [];
+    for (let index = 0; index < word.length; index += limit) chunks.push(word.slice(index, index + limit));
+    return chunks;
+  });
   const lines = [];
   let line = '';
   for (const word of words) {
@@ -60,12 +65,13 @@ export function posterSVG(composition) {
       const label = escapeXML(token.text);
       const source = sources.find((item) => item.id === token.source_id);
       const fontSize = Math.min(style === 1 ? 36 : 43, Math.max(12, (token.width - 22) / Math.max(1, [...String(token.text)].length) * 1.65));
-      art += `<g transform="rotate(${angle} ${x + token.width / 2} ${y})"><title>${label} — ${escapeXML(source?.title || token.source_id)}</title><rect x="${x}" y="${y - 43}" width="${token.width}" height="59" fill="${background}"/><text x="${x + 12}" y="${y}" font-size="${fontSize}" font-family="${style === 1 ? 'Arial,sans-serif' : 'Georgia,serif'}" ${style === 3 ? 'font-style="italic"' : ''} fill="${foreground}">${label}</text></g>`;
+      art += `<g transform="rotate(${angle} ${x + token.width / 2} ${y})"><title>${label} — ${escapeXML(source?.title || token.source_id)}</title><rect x="${x}" y="${y - 43}" width="${token.width}" height="59" fill="${background}"/><text x="${x + 12}" y="${y}" textLength="${token.width - 24}" lengthAdjust="spacingAndGlyphs" font-size="${fontSize}" font-family="${style === 1 ? 'Arial,sans-serif' : 'Georgia,serif'}" ${style === 3 ? 'font-style="italic"' : ''} fill="${foreground}">${label}</text></g>`;
       x += token.width + 10;
       wordIndex += 1;
     }
   }
-  const evidenceLabel = composition.mode === 'demo' ? 'SAMPLE VOCABULARY · NOT ARCHIVAL EVIDENCE' : 'EVERY WORD TRACED TO A REVIEWED SOURCE';
+  const allReviewed = sources.every((source) => source.reviewed);
+  const evidenceLabel = composition.mode === 'demo' ? 'SAMPLE VOCABULARY · NOT ARCHIVAL EVIDENCE' : allReviewed ? 'EVERY WORD TRACED TO A REVIEWED SOURCE' : 'WORDS TRACED TO SOURCES · TRANSCRIPTION REVIEW REQUIRED';
   const citationSVG = citations.map((line, index) => `<text x="${margin}" y="${sourceStart + 70 + index * 17}" font-family="Arial,sans-serif" font-size="11" fill="#686353">${escapeXML(line)}</text>`).join('');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="A composition from NYC Cut-Up Machine"><title>NYC Cut-Up Machine</title><desc>${escapeXML(plainText(composition))}</desc><rect width="100%" height="100%" fill="#fbf9ef"/><text x="${margin}" y="62" font-family="monospace" font-size="11" letter-spacing="1.5" fill="#797363">NEW YORK / CUT &amp; COMPOSED</text><text x="${width - margin}" y="62" text-anchor="end" font-family="monospace" font-size="11" fill="#797363">NYC CUT-UP MACHINE</text><line x1="${margin}" x2="${width - margin}" y1="83" y2="83" stroke="#d1c9b6"/>${art}<line x1="${margin}" x2="${width - margin}" y1="${sourceStart}" y2="${sourceStart}" stroke="#d1c9b6"/><text x="${margin}" y="${sourceStart + 30}" font-family="monospace" font-size="10" letter-spacing="1" fill="#db4329">${evidenceLabel}</text>${citationSVG}<text x="${margin}" y="${height - 35}" font-family="monospace" font-size="9" fill="#797363">WORDS WITH A PAST. SOMETHING NEW TO SAY.</text></svg>`;
 }

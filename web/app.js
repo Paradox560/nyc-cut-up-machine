@@ -113,7 +113,8 @@ function displayComposition(composition) {
   $('composition').hidden = false;
   $('empty-composition').hidden = true;
   $('edition').textContent = composition.mode === 'demo' ? 'SAMPLE EDITION' : 'VERIFIED WORDS';
-  $('paper-footnote').textContent = composition.mode === 'demo' ? 'SAMPLE VOCABULARY · NOT ARCHIVAL EVIDENCE' : 'EVERY WORD TRACED TO A REVIEWED SOURCE.';
+  const allReviewed = composition.sources.every((source) => source.reviewed);
+  $('paper-footnote').textContent = composition.mode === 'demo' ? 'SAMPLE VOCABULARY · NOT ARCHIVAL EVIDENCE' : allReviewed ? 'EVERY WORD TRACED TO A REVIEWED SOURCE.' : 'SOURCE TRANSCRIPTIONS NEED REVIEW.';
   $('composition-instruction').textContent = '↖ Tap any word to see where it came from.';
   $('composition-stats').textContent = `${composition.stats.words} words / ${composition.stats.source_count} sources`;
   $('composition-warnings').replaceChildren();

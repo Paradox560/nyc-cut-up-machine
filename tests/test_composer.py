@@ -81,6 +81,57 @@ class ComposerTests(unittest.TestCase):
         self.elastic.search.assert_not_called()
         self.mistral.compose.assert_not_called()
 
+    def test_new_forms_are_accepted_and_send_their_style_hint(self):
+        for form, fragment in [("eviction-notice", "bureaucratic"), ("shop-sign", "sign-like"), ("headline", "headline")]:
+            with self.subTest(form=form):
+                self.mistral.compose.reset_mock()
+                result = compose(self.config, "A lost love", form)
+                self.assertEqual(result["form"], form)
+                messages = self.mistral.compose.call_args.args[0]
+                sent = json.loads(messages[1]["content"])
+                self.assertIn(fragment, sent["style_hint"])
+
+    def test_result_records_every_retrieved_source_id(self):
+        unused = archive_source("archive-two", "WORDS FROM ANOTHER STREET")
+        self.elastic.search.return_value = [self.source, unused]
+        result = compose(self.config, "A lost love", "poem")
+        self.assertEqual(result["retrieved_source_ids"], ["archive-one", "archive-two"])
+
+    def test_rearrange_reuses_the_same_vocabulary_without_a_new_search(self):
+        store = CorpusStore(self.config.data_dir)
+        other = archive_source("archive-two", "WORDS FROM ANOTHER STREET")
+        store.upsert(self.source)
+        store.upsert(other)
+        self.elastic.search.return_value = [self.source, other]
+        first = compose(self.config, "A breakup letter", "breakup-letter")
+        self.assertEqual(self.elastic.search.call_count, 1)
+        second = compose(self.config, "A breakup letter", "eviction-notice", reuse_id=first["id"])
+        self.assertEqual(self.elastic.search.call_count, 1, "rearrange must not search again")
+        self.assertEqual(second["retrieved_source_ids"], first["retrieved_source_ids"])
+        self.assertEqual(second["form"], "eviction-notice")
+        self.assertNotEqual(second["id"], first["id"])
+        self.assertTrue(second["verified"])
+        self.assertIn("Reused vocabulary", [step["step"] for step in second["trace"]])
+        self.assertNotIn("Elasticsearch retrieval", [step["step"] for step in second["trace"]])
+
+    def test_rearrange_of_an_unknown_composition_fails_before_the_model(self):
+        with self.assertRaises(ProviderError) as ctx:
+            compose(self.config, "A poem", "poem", reuse_id="0" * 32)
+        self.assertEqual(ctx.exception.code, "reuse_not_found")
+        self.elastic.search.assert_not_called()
+        self.mistral.compose.assert_not_called()
+
+    def test_rearrange_skips_sources_that_are_no_longer_reviewed(self):
+        store = CorpusStore(self.config.data_dir)
+        store.upsert(self.source)
+        first = compose(self.config, "A poem", "poem")
+        store.upsert({**self.source, "reviewed": False})
+        self.mistral.compose.reset_mock()
+        with self.assertRaises(ProviderError) as ctx:
+            compose(self.config, "A poem", "headline", reuse_id=first["id"])
+        self.assertEqual(ctx.exception.code, "empty_corpus")
+        self.mistral.compose.assert_not_called()
+
     def test_success_saves_exact_used_source_snapshot_and_tokens(self):
         unused = archive_source("archive-two", "WORDS FROM ANOTHER STREET")
         self.elastic.search.return_value = [self.source, unused]

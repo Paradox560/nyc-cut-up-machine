@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import mimetypes
+import re
 from pathlib import Path
 from threading import BoundedSemaphore
 from urllib.parse import unquote, urlparse
@@ -108,8 +109,12 @@ class Handler(BaseHTTPRequestHandler):
                     if path == "/api/compose":
                         if not isinstance(payload.get("include_unreviewed", False), bool):
                             raise ValueError("include_unreviewed must be a boolean.")
+                        reuse_id = payload.get("reuse_id")
+                        if reuse_id is not None and not (isinstance(reuse_id, str) and re.fullmatch(r"[a-f0-9]{32}", reuse_id)):
+                            raise ValueError("reuse_id must be the id of an earlier composition.")
                         return self.json(compose(config, payload.get("prompt"), payload.get("form", "poem"),
-                            demo=demo, include_unreviewed=payload.get("include_unreviewed", False)))
+                            demo=demo, include_unreviewed=payload.get("include_unreviewed", False),
+                            reuse_id=reuse_id))
                     if path == "/api/check":
                         return self.json({"mistral": MistralClient(config).check(), "elasticsearch": ElasticClient(config).check()})
                     if path == "/api/sources/review":

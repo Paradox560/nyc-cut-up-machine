@@ -86,6 +86,7 @@ function updatePromptCount() {
 
 function setComposing(active) {
   $('compose-button').disabled = active;
+  $('rearrange-button').disabled = active || !state.composition || state.composition.mode === 'demo';
   $('compose-button').classList.toggle('is-loading', active);
   $('compose-label').textContent = active ? 'At work on the press…' : 'Cut it together';
   $('compose-icon').textContent = active ? '✳' : '↗';
@@ -137,24 +138,25 @@ async function displayComposition(composition, signal) {
   }
   $('trace').hidden = !(composition.trace || []).length;
   $('copy-button').disabled = false;
+  $('rearrange-button').disabled = composition.mode === 'demo';
   $('export-button').disabled = false;
   $('speech-button').disabled = false;
   $('speech-button').textContent = 'Listen ▷';
 }
 
-async function compose(event) {
-  event.preventDefault();
+async function compose(event, reuseId = null) {
+  event?.preventDefault();
   if (state.controller) return;
-  const prompt = $('prompt').value.trim();
+  const prompt = reuseId ? state.composition.prompt : $('prompt').value.trim();
   if (!prompt) return $('prompt').focus();
   const controller = new AbortController();
   state.controller = controller;
   let timedOut = false;
   const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 120000);
   setComposing(true);
-  $('request-status').textContent = state.status?.mode === 'demo' ? 'Arranging the sample vocabulary. No model or search services are called in sample mode.' : 'Searching the source vocabulary, composing, and checking every selected word…';
+  $('request-status').textContent = reuseId ? 'Rearranging the same words from the same photographs, with no new search…' : state.status?.mode === 'demo' ? 'Arranging the sample vocabulary. No model or search services are called in sample mode.' : 'Searching the source vocabulary, composing, and checking every selected word…';
   try {
-    const composition = await api.compose({ prompt, form: $('form-kind').value, include_unreviewed: false }, controller.signal);
+    const composition = await api.compose({ prompt, form: $('form-kind').value, include_unreviewed: false, ...(reuseId ? { reuse_id: reuseId } : {}) }, controller.signal);
     await displayComposition(composition, controller.signal);
     $('request-status').textContent = composition.mode === 'demo' ? 'Sample print ready. This is a preset composition for the selected form; your brief is used in live mode.' : 'Fresh off the press. Every cutout comes from a verified original photograph.';
     if (matchMedia('(max-width: 620px)').matches) $('press-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -200,6 +202,7 @@ async function speakComposition() {
 $('compose-tab').addEventListener('click', () => selectPanel('compose'));
 $('library-tab').addEventListener('click', () => selectPanel('library'));
 $('compose-form').addEventListener('submit', compose);
+$('rearrange-button').addEventListener('click', () => state.composition && compose(null, state.composition.id));
 $('cancel-button').addEventListener('click', () => state.controller?.abort());
 $('prompt').addEventListener('input', updatePromptCount);
 $('source-search').addEventListener('input', renderLibrary);

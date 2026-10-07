@@ -11,7 +11,17 @@ from .providers import ElasticClient, MistralClient
 from .provenance import ProvenanceError, resolve_lines, verify_crop_images
 from .store import CorpusStore
 
-FORMS = {"poem", "love-letter", "breakup-letter", "manifesto"}
+FORMS = {"poem", "love-letter", "breakup-letter", "manifesto", "eviction-notice", "shop-sign", "headline"}
+# One line of tone guidance per form. It changes the voice, never the rule that every word must come from the archive.
+FORM_HINTS = {
+    "poem": "a short found poem",
+    "love-letter": "a tender, direct love letter",
+    "breakup-letter": "a breakup letter, quiet and final, like a shop closing",
+    "manifesto": "a short declaration with a rising rhythm",
+    "eviction-notice": "a cold bureaucratic notice, short imperative lines",
+    "shop-sign": "one or two blunt, sign-like lines",
+    "headline": "one newspaper headline followed by a short subhead",
+}
 
 
 def expand_aliases(payload, aliases: dict[str, str]):
@@ -25,11 +35,11 @@ def expand_aliases(payload, aliases: dict[str, str]):
 
 
 def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = False,
-            include_unreviewed: bool = False) -> dict:
+            include_unreviewed: bool = False, reuse_id: str | None = None) -> dict:
     if not isinstance(prompt, str) or not 3 <= len(prompt.strip()) <= 2000:
         raise ValueError("Describe what to write in 3–2,000 characters.")
     if not isinstance(form, str) or form not in FORMS:
-        raise ValueError("Choose poem, love-letter, breakup-letter, or manifesto.")
+        raise ValueError("Choose a supported form: " + ", ".join(sorted(FORMS)) + ".")
     trace = []
     warnings = []
     if demo:
@@ -41,10 +51,22 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
     else:
         if not config.configured:
             raise ProviderError("Set the Mistral and Elasticsearch credentials, or start with --demo.", status=409)
-        sources = ElasticClient(config).search(prompt, include_unreviewed=include_unreviewed)
+        if reuse_id:
+            # Rearrange: reuse the exact vocabulary of an earlier composition. No new retrieval.
+            store = CorpusStore(config.data_dir)
+            previous = store.get_composition(reuse_id)
+            if not previous or not isinstance(previous.get("retrieved_source_ids"), list):
+                raise ProviderError("The earlier composition to rearrange was not found.", status=404, code="reuse_not_found")
+            sources = [s for s in (store.get(i) for i in previous["retrieved_source_ids"])
+                       if s and (include_unreviewed or s.get("reviewed"))]
+        else:
+            sources = ElasticClient(config).search(prompt, include_unreviewed=include_unreviewed)
         if not sources:
             raise ProviderError("No reviewed archive vocabulary was found. Ingest photos and review their text in the source library.", status=409, code="empty_corpus")
-        trace.append({"step": "Elasticsearch retrieval", "detail": f"Hybrid BM25 + Mistral vector search retrieved {len(sources)} source photographs."})
+        if reuse_id:
+            trace.append({"step": "Reused vocabulary", "detail": f"Same {len(sources)} source photographs as an earlier composition; no new Elasticsearch retrieval."})
+        else:
+            trace.append({"step": "Elasticsearch retrieval", "detail": f"Hybrid BM25 + Mistral vector search retrieved {len(sources)} source photographs."})
         try:
             verify_crop_images(sources, config.data_dir)
         except ProvenanceError as exc:
@@ -87,7 +109,7 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
             "If the requested topic is impossible, make the closest evocative found poem from available words."
         )
         messages = [{"role": "system", "content": system}, {"role": "user", "content": json.dumps({
-            "creative_brief": prompt.strip(), "form": form,
+            "creative_brief": prompt.strip(), "form": form, "style_hint": FORM_HINTS[form],
             "vocabulary": [{"id": w["text"], "text": w["text"]} for w in words],
             "style_examples": examples,
         }, ensure_ascii=False)}]
@@ -115,6 +137,7 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
     trace.append({"step": "Source verification", "detail": f"All {total} words resolved to immutable tokens in {len(used)} source records."})
     result = {"id": uuid4().hex, "created_at": datetime.now(timezone.utc).isoformat(),
               "prompt": prompt.strip(), "form": form, "lines": lines, "sources": used,
+              "retrieved_source_ids": [source["id"] for source in sources],
               "mode": "demo" if demo else "live", "verified": True, "trace": trace,
               "warnings": warnings, "stats": {"words": total, "source_count": len(used)}}
     CorpusStore(config.data_dir).save_composition(result)

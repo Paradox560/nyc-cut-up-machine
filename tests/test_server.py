@@ -123,6 +123,18 @@ class ServerTests(unittest.TestCase):
             elastic.assert_not_called()
             mistral.assert_not_called()
 
+    def test_reuse_id_must_be_a_composition_id(self):
+        with patch("cutup.composer.ElasticClient") as elastic, patch("cutup.composer.MistralClient") as mistral:
+            for bad in ["", "abc", "../../etc/passwd", "G" * 32, 12, True, ["a" * 32]]:
+                with self.subTest(reuse_id=bad):
+                    status, result, _ = self.request(
+                        "/api/compose", method="POST",
+                        payload={"prompt": "A poem", "form": "poem", "reuse_id": bad})
+                    self.assertEqual(status, 400)
+                    self.assertEqual(result["code"], "invalid_request")
+            elastic.assert_not_called()
+            mistral.assert_not_called()
+
     def test_malformed_json_and_non_object_bodies_are_rejected(self):
         for body in [b"{bad json", b"[]", b"null", b'"a string"']:
             with self.subTest(body=body):

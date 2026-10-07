@@ -53,7 +53,7 @@
             <label class="input-label" for="prompt">What would you like<br />the city to say?</label>
             <textarea id="prompt" name="prompt" rows="5" maxlength="1200" required placeholder="Write a love letter to a city that never writes back.">Write a love letter to a city that never writes back.</textarea>
             <div class="prompt-meta"><span>Be specific. Be a little strange.</span><span id="prompt-count">65 / 1,200</span></div>
-            <div class="form-field"><label for="form-kind">Make it a</label><div class="select-wrap"><select id="form-kind" name="form"><option value="poem">Poem</option><option value="love-letter" selected>Love letter</option><option value="breakup-letter">Breakup letter</option><option value="manifesto">Manifesto</option></select><span aria-hidden="true">↓</span></div></div>
+            <div class="form-field"><label for="form-kind">Make it a</label><div class="select-wrap"><select id="form-kind" name="form"><option value="poem">Poem</option><option value="love-letter" selected>Love letter</option><option value="breakup-letter">Breakup letter</option><option value="manifesto">Manifesto</option><option value="eviction-notice">Eviction notice</option><option value="shop-sign">Shop sign</option><option value="headline">Headline</option></select><span aria-hidden="true">↓</span></div></div>
             <button class="compose-button" id="compose-button" type="submit"><span id="compose-label">Cut it together</span><span id="compose-icon" aria-hidden="true">↗</span></button>
             <button class="cancel-button" id="cancel-button" type="button" hidden>Cancel this composition</button>
             <p class="request-status" id="request-status" role="status" aria-live="polite"></p>
@@ -63,7 +63,7 @@
         </aside>
 
         <section class="press-panel" aria-labelledby="press-title">
-          <div class="press-toolbar"><h2 id="press-title">ON THE PRESS</h2><div class="output-actions"><button id="copy-button" type="button" disabled aria-label="Copy the composition as text">Copy text</button><button id="export-button" type="button" disabled>Save poster <span aria-hidden="true">↓</span></button><button id="speech-button" type="button" hidden disabled>Listen <span aria-hidden="true">▷</span></button></div></div>
+          <div class="press-toolbar"><h2 id="press-title">ON THE PRESS</h2><div class="output-actions"><button id="rearrange-button" type="button" disabled title="Rewrite the same words in the form selected on the left">Rearrange <span aria-hidden="true">↻</span></button><button id="copy-button" type="button" disabled aria-label="Copy the composition as text">Copy text</button><button id="export-button" type="button" disabled>Save poster <span aria-hidden="true">↓</span></button><button id="speech-button" type="button" hidden disabled>Listen <span aria-hidden="true">▷</span></button></div></div>
           <article class="paper" id="paper" aria-busy="false">
             <div class="paper-topline"><span>NEW YORK / CUT & COMPOSED</span><span id="edition">YOUR FIRST EDITION</span></div>
             <div class="empty-composition" id="empty-composition"><span class="empty-symbol" aria-hidden="true">✂</span><h3>A city full of words.<br />An empty piece of paper.</h3><p>Give the machine a brief.<br />Let's see what the city has to say.</p><span class="paper-blank-lines" aria-hidden="true"><i></i><i></i><i></i></span></div>

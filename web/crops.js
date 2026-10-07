@@ -30,14 +30,39 @@ export function validateCrop(token, source) {
   return crop;
 }
 
+export function tokenPieces(token) {
+  if (token?.kind !== 'assembled') return [token];
+  if (!Array.isArray(token.pieces) || token.pieces.length === 0 || token.pieces.some((piece) => !piece || piece.kind === 'assembled')) {
+    throw new Error(`“${token?.text || 'This word'}” has no usable photograph letters. Extract and review its missing letters, then try again.`);
+  }
+  return token.pieces;
+}
+
+export function tokenPrefixUnits(token, index) {
+  if (typeof token.prefix !== 'string') return index === 0 ? 0 : 1;
+  if (!/^[ \t]*$/.test(token.prefix)) throw new Error('A word has unsupported whitespace. Keep line breaks between composition rows and try again.');
+  return [...token.prefix].reduce((total, character) => total + (character === '\t' ? 4 : 1), 0);
+}
+
+/** Keep punctuation at a readable size while preserving its original pixels. */
+export function pieceHeight(piece, base = 64) {
+  if (/^[.,]$/.test(piece.text)) return base * .2;
+  if (/^[:;]$/.test(piece.text)) return base * .45;
+  if (/^['"‘’“”]$/.test(piece.text)) return base * .3;
+  if (/^[-–—_]$/.test(piece.text)) return base * .12;
+  return base;
+}
+
 export function liveCropSources(composition) {
   const sources = new Map(composition.sources.map((source) => [source.id, source]));
   const used = new Map();
   for (const token of composition.lines.flat()) {
-    const source = sources.get(token.source_id);
-    validateCrop(token, source);
-    if (source.synthetic) throw new Error('A live composition contains a synthetic source. Reindex the archive corpus and compose again.');
-    used.set(source.id, source);
+    for (const piece of tokenPieces(token)) {
+      const source = sources.get(piece.source_id);
+      validateCrop(piece, source);
+      if (source.synthetic) throw new Error('A live composition contains a synthetic source. Reindex the archive corpus and compose again.');
+      used.set(source.id, source);
+    }
   }
   return [...used.values()];
 }

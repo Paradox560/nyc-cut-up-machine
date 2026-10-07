@@ -1,4 +1,4 @@
-import { archiveImageURL, cropViewport, highlightedPhoto, liveCropSources } from './crops.js';
+import { archiveImageURL, cropViewport, highlightedPhoto, liveCropSources, pieceHeight, tokenPieces, tokenPrefixUnits } from './crops.js';
 
 export function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -45,22 +45,42 @@ export function renderComposition(container, composition, onSelectSource, origin
   let index = 0;
   for (const line of composition.lines) {
     const row = element('div', 'composition-line');
-    for (const token of line) {
-      const source = sourceMap.get(token.source_id);
+    if (!line.length) row.classList.add('is-blank');
+    const makeButton = (piece, assembledWord = '') => {
+      const source = sourceMap.get(piece.source_id);
       const demo = composition.mode === 'demo';
-      const button = element('button', `word-token${demo ? '' : ' is-crop'}`, demo ? token.text : undefined);
+      const button = element('button', `word-token${demo ? '' : ' is-crop'}${assembledWord ? ' glyph-token' : ''}`, demo ? piece.text : undefined);
       button.type = 'button';
       if (demo) button.dataset.style = String(index % 4);
       else {
-        button.style.width = `${Math.min(520, Math.max(24, token.crop.width / token.crop.height * 64))}px`;
-        button.append(cropViewport(token, source, { originalURL: originals.get(source.id) }));
+        const height = pieceHeight(piece, assembledWord ? 54 : 64);
+        button.style.width = `${Math.min(520, Math.max(4, piece.crop.width / piece.crop.height * height))}px`;
+        if (/^['"‘’“”]$/.test(piece.text)) button.classList.add('raised-glyph');
+        if (/^[-–—_]$/.test(piece.text)) button.classList.add('middle-glyph');
+        button.append(cropViewport(piece, source, { originalURL: originals.get(source.id) }));
       }
       button.style.setProperty('--tilt', `${[-1.7, .6, -1.1, 1.6, -.4][index % 5]}deg`);
-      button.setAttribute('aria-label', `${token.text}. View source: ${source?.title || token.source_id}`);
-      button.title = `Found in ${source?.title || token.source_id}`;
-      button.addEventListener('click', () => onSelectSource(source, token));
-      row.append(button);
+      button.setAttribute('aria-label', `${assembledWord ? `Letter ${piece.text}, in ${assembledWord}` : piece.text}. View source: ${source?.title || piece.source_id}`);
+      button.title = `${assembledWord ? `${piece.text} in ${assembledWord} · ` : ''}Found in ${source?.title || piece.source_id}`;
+      button.addEventListener('click', () => onSelectSource(source, assembledWord ? { ...piece, assembled_word: assembledWord } : piece));
       index += 1;
+      return button;
+    };
+    for (let position = 0; position < line.length; position += 1) {
+      const token = line[position];
+      const unit = element('span', 'composition-unit');
+      const whitespace = tokenPrefixUnits(token, position);
+      unit.style.paddingInlineStart = `min(${whitespace * 14}px, 65%)`;
+      unit.dataset.prefix = typeof token.prefix === 'string' ? token.prefix : position ? ' ' : '';
+      if (token.kind === 'assembled' && composition.mode !== 'demo') {
+        const group = element('span', 'assembled-word');
+        group.style.setProperty('--letter-gap', `${Math.min(3, 60 / token.pieces.length)}px`);
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', `${token.text}, assembled from photographed letters`);
+        for (const piece of tokenPieces(token)) group.append(makeButton(piece, token.text));
+        unit.append(group);
+      } else unit.append(makeButton(token));
+      row.append(unit);
     }
     fragment.append(row);
   }
@@ -108,6 +128,7 @@ export function renderSourceDialog(container, source, { onSave, snapshot = false
   title.id = 'source-dialog-title';
   container.append(title, element('p', 'source-card-detail', sourceDetails(source)));
   if (isSample(source)) container.append(element('p', 'sample-label', 'Sample vocabulary · not archival evidence'));
+  if (token?.assembled_word) container.append(element('p', 'source-letter-context', `This photographed letter is part of “${token.assembled_word}”. Each letter keeps its own source.`));
   if (token?.crop && !isSample(source)) {
     container.append(element('p', 'source-dialog-label', 'The original pixels, enlarged'));
     const enlargement = element('div', 'selected-crop-view');
@@ -121,7 +142,7 @@ export function renderSourceDialog(container, source, { onSave, snapshot = false
   container.append(element('p', 'source-dialog-label', 'Words from this source'));
   container.append(element('p', 'source-transcription', source.ocr_text));
   if (source.transcription_method) {
-    const method = source.transcription_method === 'vision' ? 'Vision transcription' : 'OCR transcription';
+    const method = source.transcription_method === 'vision' ? 'Vision transcription' : source.transcription_method === 'manual' ? 'Visual transcription' : 'OCR transcription';
     container.append(element('p', 'source-attribution', `${method}${source.transcription_model ? ` · ${source.transcription_model}` : ''}${source.reviewed ? ' · visually reviewed' : ' · awaiting review'}`));
   }
   container.append(element('p', 'source-attribution', source.attribution || 'No attribution was provided. Verify the source before use.'));

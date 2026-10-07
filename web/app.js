@@ -4,7 +4,7 @@ import { element, renderComposition, renderSourceDialog, renderSourceGrid } from
 import { liveCropSources, loadOriginals } from './crops.js';
 
 const $ = (id) => document.getElementById(id);
-const state = { status: null, sources: [], composition: null, originals: new Map(), controller: null, exportController: null, speechController: null, audioURL: null, toastTimer: null };
+const state = { status: null, sources: [], composition: null, originals: new Map(), controller: null, exportController: null, speechController: null, audioURL: null, toastTimer: null, formKind: $('form-kind').value, generatedDraft: $('prompt').value, customDraft: '' };
 
 function toast(message) {
   clearTimeout(state.toastTimer);
@@ -25,8 +25,54 @@ function setStatus(status) {
   $('status-text').textContent = live ? 'Live workshop' : 'Sample workshop';
   $('service-status').title = `Mistral: ${status.configured.mistral ? 'configured' : 'not configured'}; Elasticsearch: ${status.configured.elasticsearch ? 'configured' : 'not configured'}. ${status.reviewed_count} reviewed sources. Configuration does not guarantee service connectivity.`;
   $('mode-notice').hidden = live;
-  $('source-count').textContent = String(status.corpus_count ?? state.sources.length);
+  $('source-count').textContent = `${status.corpus_count ?? state.sources.length} ${live ? 'photos' : 'samples'}`;
   $('speech-button').hidden = !status.voice_enabled;
+  renderInventory();
+}
+
+function renderInventory() {
+  const inventory = state.status?.inventory;
+  const visible = Boolean(inventory && state.status.mode === 'live');
+  for (const id of ['press-inventory', 'library-inventory', 'inventory-coverage']) $(id).hidden = !visible;
+  if (!visible) return;
+  const render = (id, fields) => {
+    const container = $(id);
+    container.replaceChildren();
+    for (const [key, label] of fields) {
+      const entry = element('div', 'inventory-item');
+      const count = Number.isFinite(inventory[key]) ? inventory[key].toLocaleString() : '—';
+      entry.append(element('strong', '', count), element('span', '', label));
+      container.append(entry);
+    }
+  };
+  render('press-inventory', [['reviewed_images', 'reviewed photographs'], ['word_crops', 'word cuts'], ['letter_crops', 'letter cuts']]);
+  render('library-inventory', [['downloaded_images', 'downloaded photographs'], ['processed_images', 'processed photographs'], ['reviewed_images', 'reviewed photographs'], ['word_crops', 'word cuts'], ['letter_crops', 'letter cuts']]);
+  const missing = Array.isArray(inventory.missing_letters) ? inventory.missing_letters.join(' ') : String(inventory.missing_letters || '');
+  $('inventory-coverage').textContent = missing ? `Letters still missing from the drawer: ${missing}. A custom message must use letters already photographed.` : 'The photographed letter drawer covers the alphabet. Punctuation also needs its own photographed cut.';
+}
+
+function syncFormMode() {
+  const next = $('form-kind').value;
+  const custom = next === 'custom';
+  if (next !== state.formKind && (custom || state.formKind === 'custom')) {
+    if (custom) {
+      state.generatedDraft = $('prompt').value;
+      $('prompt').value = state.customDraft;
+    } else {
+      state.customDraft = $('prompt').value;
+      $('prompt').value = state.generatedDraft;
+    }
+  }
+  state.formKind = next;
+  $('prompt').maxLength = custom ? 300 : 1200;
+  $('prompt').placeholder = custom ? 'Stay weird New York!\nMake room for impossible things' : 'Write a love letter to a city that never writes back.';
+  if (custom) $('prompt-label').textContent = 'Your words. Exactly.';
+  else $('prompt-label').replaceChildren(document.createTextNode('What would you like'), document.createElement('br'), document.createTextNode('the city to say?'));
+  $('prompt-hint').textContent = custom ? 'Keep your spaces and line breaks.' : 'Be specific. Be a little strange.';
+  $('custom-note').hidden = !custom;
+  if (!state.controller) $('compose-label').textContent = custom ? 'Cut my message' : 'Cut it together';
+  $('rearrange-button').disabled = Boolean(state.controller) || !state.composition || state.composition.mode === 'demo' || custom;
+  updatePromptCount();
 }
 
 function selectPanel(panel) {
@@ -76,19 +122,20 @@ function renderLibrary() {
   if (!state.sources.length) $('library-empty').textContent = 'Your source drawer is empty. Import archive photographs to begin.';
   else $('library-empty').textContent = 'No sources match. Try another word or clear the review filter.';
   const reviewed = state.sources.filter((source) => source.reviewed).length;
-  $('library-summary').textContent = `${sources.length} of ${state.sources.length} sources · ${reviewed} reviewed`;
-  $('source-count').textContent = String(state.sources.length);
+  $('library-summary').textContent = state.status?.mode === 'demo' ? `${sources.length} sample vocabularies` : `${sources.length} of ${state.sources.length} photographs · ${reviewed} reviewed`;
+  $('source-count').textContent = `${state.sources.length} ${state.status?.mode === 'demo' ? 'samples' : 'photos'}`;
 }
 
 function updatePromptCount() {
-  $('prompt-count').textContent = `${$('prompt').value.length.toLocaleString()} / 1,200`;
+  const custom = $('form-kind').value === 'custom';
+  $('prompt-count').textContent = `${[...$('prompt').value].length.toLocaleString()} / ${custom ? '300 characters' : '1,200'}`;
 }
 
 function setComposing(active) {
   $('compose-button').disabled = active;
-  $('rearrange-button').disabled = active || !state.composition || state.composition.mode === 'demo';
+  $('rearrange-button').disabled = active || !state.composition || state.composition.mode === 'demo' || $('form-kind').value === 'custom';
   $('compose-button').classList.toggle('is-loading', active);
-  $('compose-label').textContent = active ? 'At work on the press…' : 'Cut it together';
+  $('compose-label').textContent = active ? 'At work on the press…' : $('form-kind').value === 'custom' ? 'Cut my message' : 'Cut it together';
   $('compose-icon').textContent = active ? '✳' : '↗';
   $('cancel-button').hidden = !active;
   $('paper').setAttribute('aria-busy', String(active));
@@ -125,8 +172,10 @@ async function displayComposition(composition, signal) {
   $('edition').textContent = composition.mode === 'demo' ? 'SAMPLE EDITION' : 'ORIGINAL PHOTO CUTS';
   const allReviewed = composition.sources.every((source) => source.reviewed);
   $('paper-footnote').textContent = composition.mode === 'demo' ? 'SAMPLE VOCABULARY · NOT ARCHIVAL EVIDENCE' : allReviewed ? 'CUT FROM ORIGINAL PHOTOGRAPHS. EVERY WORD TRACED.' : 'SOURCE TRANSCRIPTIONS NEED REVIEW.';
-  $('composition-instruction').textContent = composition.mode === 'demo' ? '↖ Tap any word to see where it came from.' : '↖ Tap a cutout to find it in the original photograph.';
-  $('composition-stats').textContent = `${composition.stats.words} words / ${composition.stats.source_count} sources`;
+  $('composition-instruction').textContent = composition.mode === 'demo' ? '↖ Tap any word to see where it came from.' : '↖ Tap a word or letter to find it in the original photograph.';
+  const assembled = composition.lines.flat().filter((token) => token.kind === 'assembled');
+  const letters = assembled.reduce((sum, token) => sum + token.pieces.length, 0);
+  $('composition-stats').textContent = `${composition.stats.words} words / ${composition.stats.source_count} photographs${letters ? `\n${letters} letter cuts used` : ''}`;
   $('composition-warnings').replaceChildren();
   for (const warning of composition.warnings || []) $('composition-warnings').append(element('p', '', warning));
   $('composition-warnings').hidden = !(composition.warnings || []).length;
@@ -138,7 +187,7 @@ async function displayComposition(composition, signal) {
   }
   $('trace').hidden = !(composition.trace || []).length;
   $('copy-button').disabled = false;
-  $('rearrange-button').disabled = composition.mode === 'demo';
+  $('rearrange-button').disabled = composition.mode === 'demo' || $('form-kind').value === 'custom';
   $('export-button').disabled = false;
   $('speech-button').disabled = false;
   $('speech-button').textContent = 'Listen ▷';
@@ -147,18 +196,25 @@ async function displayComposition(composition, signal) {
 async function compose(event, reuseId = null) {
   event?.preventDefault();
   if (state.controller) return;
-  const prompt = reuseId ? state.composition.prompt : $('prompt').value.trim();
-  if (!prompt) return $('prompt').focus();
+  const custom = $('form-kind').value === 'custom';
+  if (reuseId && custom) return toast('Use Cut my message to preserve your exact custom wording.');
+  const prompt = reuseId ? state.composition.prompt : custom ? $('prompt').value : $('prompt').value.trim();
+  if (!prompt.trim()) return $('prompt').focus();
+  if (custom && [...prompt].length > 300) {
+    $('request-status').textContent = 'Keep your custom message to 300 characters, including spaces and line breaks.';
+    $('request-status').classList.add('is-error');
+    return;
+  }
   const controller = new AbortController();
   state.controller = controller;
   let timedOut = false;
   const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 120000);
   setComposing(true);
-  $('request-status').textContent = reuseId ? 'Rearranging the same words from the same photographs, with no new search…' : state.status?.mode === 'demo' ? 'Arranging the sample vocabulary. No model or search services are called in sample mode.' : 'Searching the source vocabulary, composing, and checking every selected word…';
+  $('request-status').textContent = reuseId ? 'Rearranging the same words from the same photographs, with no new search…' : state.status?.mode === 'demo' ? 'Arranging the sample vocabulary. No model or search services are called in sample mode.' : custom ? 'Finding photographed words and letters for your exact message…' : 'Searching the source vocabulary, composing, and checking every selected word…';
   try {
     const composition = await api.compose({ prompt, form: $('form-kind').value, include_unreviewed: false, ...(reuseId ? { reuse_id: reuseId } : {}) }, controller.signal);
     await displayComposition(composition, controller.signal);
-    $('request-status').textContent = composition.mode === 'demo' ? 'Sample print ready. This is a preset composition for the selected form; your brief is used in live mode.' : 'Fresh off the press. Every cutout comes from a verified original photograph.';
+    $('request-status').textContent = composition.mode === 'demo' ? 'Sample print ready. This is a preset composition for the selected form; your brief is used in live mode.' : typeof composition.exact_text === 'string' ? 'Your exact wording, cut from verified original photographs.' : 'Fresh off the press. Every cutout comes from a verified original photograph.';
     if (matchMedia('(max-width: 620px)').matches) $('press-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     $('request-status').classList.add('is-error');
@@ -205,6 +261,7 @@ $('compose-form').addEventListener('submit', compose);
 $('rearrange-button').addEventListener('click', () => state.composition && compose(null, state.composition.id));
 $('cancel-button').addEventListener('click', () => state.controller?.abort());
 $('prompt').addEventListener('input', updatePromptCount);
+$('form-kind').addEventListener('change', syncFormMode);
 $('source-search').addEventListener('input', renderLibrary);
 $('unreviewed-filter').addEventListener('change', renderLibrary);
 $('close-drawer').addEventListener('click', () => $('source-dialog').close());
@@ -215,8 +272,9 @@ $('source-dialog').addEventListener('click', (event) => {
   }
 });
 for (const button of document.querySelectorAll('.sample-prompt')) button.addEventListener('click', () => {
-  $('prompt').value = button.dataset.prompt;
   $('form-kind').value = button.dataset.form;
+  syncFormMode();
+  $('prompt').value = button.dataset.prompt;
   updatePromptCount();
   $('prompt').focus();
 });
@@ -248,7 +306,7 @@ $('export-button').addEventListener('click', async () => {
 $('speech-button').addEventListener('click', speakComposition);
 window.addEventListener('pagehide', () => { state.controller?.abort(); state.exportController?.abort(); clearAudio(); });
 
-updatePromptCount();
+syncFormMode();
 const initial = await Promise.allSettled([api.status(timeoutSignal(15000)), api.sources(timeoutSignal(15000))]);
 if (initial[0].status === 'fulfilled') setStatus(initial[0].value);
 else {

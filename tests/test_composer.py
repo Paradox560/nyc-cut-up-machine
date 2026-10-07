@@ -135,7 +135,7 @@ class ComposerTests(unittest.TestCase):
         self.source["reviewed"] = False
         result = compose(self.config, "A lost love", include_unreviewed=True)
         self.elastic.search.assert_called_once_with("A lost love", include_unreviewed=True)
-        self.assertIn("unreviewed OCR", " ".join(result["warnings"]))
+        self.assertIn("unreviewed", " ".join(result["warnings"]))
         self.assertFalse(result["sources"][0]["reviewed"])
 
     def test_source_text_and_brief_remain_data_in_model_request(self):

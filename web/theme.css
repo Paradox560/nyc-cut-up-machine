@@ -95,5 +95,8 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .source-dialog .source-selected-word { color: #b8430a; }
 .toast { background: var(--accent); color: var(--on-accent); font-family: var(--mono); font-weight: 700; }
 
+.hero-art { margin: 0; justify-self: end; width: 100%; max-width: 440px; }
+.hero-art img { display: block; width: 100%; height: auto; -webkit-mask-image: radial-gradient(closest-side, #000 62%, transparent 100%); mask-image: radial-gradient(closest-side, #000 62%, transparent 100%); }
+@media (max-width: 800px) { .hero-art { max-width: 320px; margin: 18px auto 0; justify-self: center; } }
 @media (max-width: 620px) { .input-label br, .workshop-note br { display: inline; } }
 @media (max-width: 800px) { h1 { font-size: clamp(46px, 13vw, 84px); } .brand small { display: none; } }

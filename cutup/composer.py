@@ -10,7 +10,7 @@ from .demo import demo_selection, demo_sources
 from .http_client import ProviderError
 from .providers import ElasticClient, MistralClient
 from .provenance import ProvenanceError, plain_text, resolve_lines, validate_assembled_lines, verify_crop_images
-from .store import CorpusStore
+from .store import CorpusStore, application_store
 from . import moderation
 
 FORMS = {"poem", "love-letter", "breakup-letter", "manifesto", "eviction-notice", "shop-sign", "headline", "custom"}
@@ -49,7 +49,7 @@ def finish(config, prompt, form, lines, sources, trace, warnings, *, demo=False,
               "verified": True, "trace": trace, "warnings": warnings, "stats": stats}
     if exact_text is not None:
         result["exact_text"] = exact_text
-    CorpusStore(config.data_dir).save_composition(result)
+    application_store(config).save_composition(result)
     return result
 
 
@@ -75,17 +75,24 @@ def compose_with_letters(config, client, prompt, form, sources, trace, *, includ
             {"role": "user", "content": json.dumps({"creative_brief": prompt.strip(), "form": form, "style_hint": FORM_HINTS[form],
                 "whole_words": [options[0]["text"] for options in words.values()][:650],
                 "available_characters": sorted(letters)}, ensure_ascii=False)}]
+        fallback_aliases = {options[0]["text"]: options[0]["id"] for options in list(words.values())[:650]}
         for attempt in range(2):
-            payload = client.compose(messages, allowed_words=None)
+            payload = client.compose(messages, allowed_words=list(fallback_aliases) if attempt else None)
             try:
-                lines = assemble_model_lines(payload, sources, require_reviewed=require_reviewed)
+                if attempt:
+                    lines = resolve_lines(expand_aliases(payload, fallback_aliases), sources,
+                                          require_reviewed=require_reviewed, require_crops=True)
+                    if any(token["id"] not in fallback_aliases.values() for row in lines for token in row):
+                        raise ProvenanceError("A fallback word was outside the supplied vocabulary.")
+                else:
+                    lines = assemble_model_lines(payload, sources, require_reviewed=require_reviewed)
                 break
             except ProvenanceError as exc:
-                if attempt:
-                    raise ProviderError("The composition needs characters without reviewed photo crops. No unsupported lettering was displayed; try another brief.", code="provenance_rejected") from None
+                if attempt or not fallback_aliases:
+                    raise ProviderError(f"The composition could not pass its photo-source check: {exc} No unsupported lettering was displayed.", code="provenance_rejected") from None
                 messages.extend([{"role": "assistant", "content": json.dumps(payload)},
-                    {"role": "user", "content": f"Validation failed: {exc} Revise using only available whole words and photographed characters."}])
-                trace.append({"step": "Repair", "detail": "Rejected writing that could not be assembled from actual source pixels."})
+                    {"role": "user", "content": f"Validation failed: {exc} For this final revision use ONLY exact whole_words strings from the supplied vocabulary. Do not spell new words or add punctuation. Return short lines of existing whole words."}])
+                trace.append({"step": "Repair", "detail": f"The first draft could not be cut from the photographs: {exc} Retried with a strict whole-word vocabulary."})
         trace.append({"step": "Mistral composition", "detail": f"{config.chat_model} composed with {len(words)} whole-word spellings and {len(letters)} photographed characters. Missing words were assembled letter by letter."})
     return lines
 
@@ -132,7 +139,7 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
             warnings.append("Moderation is switched off (CUTUP_MODERATION=off).")
         if reuse_id:
             # Rearrange: reuse the exact vocabulary of an earlier composition. No new retrieval.
-            store = CorpusStore(config.data_dir)
+            store = application_store(config)
             previous = store.get_composition(reuse_id)
             if not previous or not isinstance(previous.get("retrieved_source_ids"), list):
                 raise ProviderError("The earlier composition to rearrange was not found.", status=404, code="reuse_not_found")

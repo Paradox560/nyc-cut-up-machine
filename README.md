@@ -1,4 +1,6 @@
-# NYC Cut-Up Machine
+# SHOPLIFT (NYC Cut-Up Machine)
+
+<img src="web/logo.svg" width="72" alt="SHOPLIFT logo: a square cut along its diagonal" />
 
 **Write something new using only words New York put on its buildings.**
 

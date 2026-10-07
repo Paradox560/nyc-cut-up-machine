@@ -3,28 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f1eddf" />
-    <meta name="description" content="A little print shop for the city's found words. Compose with storefront language, and trace every word back to its source." />
-    <title>NYC Cut-Up Machine — The city has a way with words.</title>
+    <meta name="theme-color" content="#0a0a0b" />
+    <meta name="description" content="SHOPLIFT lifts words off 1940s New York storefront photographs and cuts them into new writing. Every word is footnoted to the photo it came from." />
+    <title>SHOPLIFT — Lift the city's words.</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/theme.css" />
     <script type="module" src="/app.js"></script>
     <script type="module" src="/vocab.js"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to the print shop</a>
     <header class="masthead">
-      <a class="brand" href="/" aria-label="NYC Cut-Up Machine home"><span class="brand-mark" aria-hidden="true">✳</span><span>NYC<br />CUT-UP MACHINE</span></a>
-      <p class="masthead-note">Found in New York.<br />Put together by you.</p>
+      <a class="brand" href="/" aria-label="SHOPLIFT home"><svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true"><path d="M6 6h38L6 44z" fill="#c8ff1a"/><path d="M58 20v38H20z" fill="#c8ff1a"/></svg><span>SHOPLIFT<small>NYC / FOUND WORDS</small></span></a>
+      <p class="masthead-note">Cut from 1940.<br />Footnoted always.</p>
       <div class="service-status" id="service-status" role="status"><span class="status-dot" aria-hidden="true"></span><span id="status-text">Opening the shop…</span></div>
     </header>
+
+    <div class="ticker" aria-hidden="true"><div class="ticker-track"><span>Every word footnoted</span><span>Cut from real photographs</span><span>No word without a source</span><span>New York, 1940</span><span>Every word footnoted</span><span>Cut from real photographs</span><span>No word without a source</span><span>New York, 1940</span></div></div>
 
     <main id="main">
       <section class="intro" aria-labelledby="intro-title">
         <div class="intro-copy">
-          <p class="eyebrow">An experiment in found language / No. 001</p>
-          <h1 id="intro-title">The city has<br />a way with <span>words.</span></h1>
-          <p class="intro-description">Make something new from words already out there. A poem. A love letter. A spectacular goodbye. Cut straight from the city's old photographs.</p>
+          <p class="eyebrow">Found-word machine / v0.2</p>
+          <h1 id="intro-title">Lift the<br />city's <span>words.</span></h1>
+          <p class="intro-description">Write a poem, a love letter or an eviction notice using only words cut from 1940s New York storefront photographs. Every word you get is footnoted to the photo it came from.</p>
         </div>
         <div class="intro-collage" aria-hidden="true">
           <span class="collage-small">NEW YORK, REASSEMBLED</span>
@@ -86,7 +89,7 @@
         <p class="library-empty" id="library-empty" hidden>No sources match. Try another word or clear the review filter.</p>
       </section>
 
-      <footer class="page-footer"><p>A little print shop for the city's found words.</p><p>Made with Mistral, Elasticsearch &amp; a New York state of mind.</p></footer>
+      <footer class="page-footer"><p>SHOPLIFT. Words lifted from the city, every one with a paper trail.</p><p>Built with Mistral and Elasticsearch at the Elastic x Mistral NYC Hack Night.</p></footer>
     </main>
 
     <dialog class="source-dialog" id="source-dialog" aria-labelledby="source-dialog-title">

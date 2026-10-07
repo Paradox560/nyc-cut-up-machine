@@ -1,52 +1,58 @@
 # Three-minute hackathon demo
 
-The promise: **write something new with actual pieces of historical NYC storefront photographs, and reveal exactly where every word was cut.**
+The promise: **write a new message using actual pieces of historical NYC photographs, then reveal exactly where every word or letter was cut.**
 
 ## Before presenting
 
-- Use the setup and import instructions in the repository README. Keep credentials in local configuration; close terminal tabs that might expose them.
-- Import a small set of actual NYC tax photographs with source links and attribution. Review and correct OCR against each photograph before approving its vocabulary. Choose enough legible storefronts to support the writing prompt.
-- Run word localization, inspect the crop contact sheet, and accept only correctly framed words before indexing. Words without locations cannot appear in a live print.
-- Index the approved sources and verify the configured Mistral and Elasticsearch connections. Rehearse the complete live search and composition once; service access alone does not establish a working demo.
-- Inspect the vocabulary before choosing a prompt. A narrow historical corpus may simply lack the words for a request; that limitation is part of the creative constraint.
-- Use synthetic sample mode only for explaining the interface or a clearly announced fallback. Its vocabulary is invented, its composition is a fixture, and it does not demonstrate a live service integration or archival evidence.
-
-The local launch command is `python3 -m cutup --port 8765`. Start an initial import with `python3 scripts/ingest.py --limit 3`, review the imported text in the interface, and use `python3 -m cutup index` when indexing the local corpus is required. For an explicitly synthetic presentation, launch with `python3 -m cutup --port 8765 --demo`. See the README for prerequisites and current command details.
+- Follow the setup and import instructions in the README. Keep credentials in ignored local configuration.
+- The prepared local corpus has 59 photographs, 51 reviewed sources (50 with nonempty text), 105 accepted word crops, and 31 letter crops. The photographed alphabet covers A–Z; supported additional characters are `!`, `'`, `-`, `0`, and `5`.
+- Review transcriptions against the originals, inspect word and letter crops, and index accepted evidence. Rehearse live Mistral embeddings, Elasticsearch retrieval, and a complete composition.
+- Start with `python3 -m cutup --port 8765`. A fresh clone must import and review its own archive data; images and the prepared corpus are ignored local files.
+- The explicit `--demo` option uses invented sample words and fixture responses. Label it as synthetic when presenting it.
 
 ## 0:00–0:25 — Set the constraint
 
-“What if New York could write you a breakup letter using only the words it put on its buildings? This machine turns an archive into a vocabulary. Every word has to come from a reviewed photograph.”
+“What if New York could write you a message using the letters it put on its buildings? This machine turns an archive into a photographic alphabet.”
 
-Show an actual imported photograph, its archive attribution, and the corrected storefront text. Explain that transcription and word locations are reviewed; the composer can use only words with accepted photograph crops.
+Show an imported photograph, its archive attribution, and one reviewed storefront word. Explain that each usable word or letter has an accepted rectangle in the original image.
 
-## 0:25–1:10 — Retrieve and compose
+## 0:25–1:10 — Make an exact custom message
 
-Request a breakup letter, poem, or other supported form using a prompt suited to the imported vocabulary.
+Choose **Make it a custom** and enter the live-tested message with its line break:
 
-“Mistral embeds the request. Elasticsearch retrieves storefront vocabulary and crop coordinates using semantic and text search. Mistral selects exact words from that vocabulary. Application code resolves their IDs, verifies the original photographs, and cuts out the actual pixels.”
+```text
+Stay weird New York!
+Make room for quixotic joy
+```
 
-Show the retrieved sources, then the composition. Describe only the flow visibly exercised by this run. Do not describe a synthetic fallback as a live response.
+“Your words stay yours. Mistral embeds the request, and Elasticsearch retrieves photographic words and letters. The app prefers whole photographed words and spells missing words using individually verified letter cutouts.”
 
-## 1:10–1:50 — Prove a word
+Custom mode preserves the input and line breaks without a chat-model rewrite. Visible letter case follows the old signs; copying the message preserves its exact text. Each displayed fragment is an actual photo crop. Unsupported characters produce an explicit error instead of a font substitute.
 
-Click an output word. Show the enlarged photo cutout, then its outlined rectangle in the full photograph. Open a second word from another photograph to demonstrate that the result combines actual photographic fragments. The source image's original grain and lettering should be visible in the print.
+## 1:10–1:50 — Prove a letter
 
-“The model selects evidence IDs. It cannot insert a more convenient word. We preserve the original spelling and allow reuse and rearrangement.”
+Click a fragment. Show its enlarged cutout and outlined rectangle in the full photograph. Inspect another letter from a different source. The grain, weathering, and different historical letterforms should remain visible.
 
-Explain that unknown IDs, superseded transcription, missing crop coordinates, and changed image bytes are rejected. Visual review establishes that a crop spells the intended word. The app does not regenerate or typeset the live collage's words.
+“Every fragment is bound to an image fingerprint and exact coordinates. We can point back to the evidence.”
 
-## 1:50–2:30 — Change the writing brief
+The backend rejects unknown crop IDs, stale source data, changed image bytes, missing coordinates, and unsupported characters. Visual review establishes what a crop depicts; neither Mistral nor the app redraws its letters.
 
-Try a second supported form or tone: “Make this a declaration of love.” Keep the same constraints. If the corpus cannot express the request, acknowledge the missing vocabulary and show how importing more photographs expands the instrument.
+## 1:50–2:30 — Let Mistral write
 
-If voice is configured and rehearsed, demonstrate the supported audio feature briefly. Otherwise keep the presentation focused on the verified text workflow.
+Choose a generated form such as a poem or love letter and give it a short brief: “A love letter to a city that stays strange.”
 
-## 2:30–3:00 — Explain why both services matter
+“Mistral writes the message. Elasticsearch finds the archive fragments that can physically spell it. The same provenance checks apply.”
 
-“Mistral reads the photographs, embeds the meaning, and composes with constrained selections. Elasticsearch turns a growing city archive into retrievable vocabulary. The result is creative writing with inspectable evidence.”
+With a reviewed letter drawer, generated writing can use new words assembled from real photographed characters. Without it, the original word-only constraint remains. Describe only the flow exercised in the current run.
 
-Export the SVG poster and show that its photographic cutouts remain visible offline: the original image bytes and their crop coordinates are embedded. End on the composition and one visible source photograph. Present only capabilities exercised in the current build; describe untested voice or expanded archive features as future work.
+## 2:30–3:00 — Export the evidence
+
+Export the SVG poster and open it offline. Source photograph bytes, crop geometry, credits, and provenance travel with the artwork. A 390px mobile view and offline SVG rendering have been checked.
+
+“Mistral reads, embeds, and writes. Elasticsearch makes a growing archive searchable. The print is made from the city's actual photographed marks.”
+
+Optional voice features should be presented only after a separate successful live rehearsal.
 
 ## Honest fallback
 
-If an external service fails, state the failure and show a previously saved live result with its original evidence snapshot, if available. Label it as a saved result. If none is available, show the synthetic sample and say: “This demonstrates the interaction; these are invented sample words and no live archive search is occurring.” Never substitute a fixture while leaving a live-data claim onscreen.
+If a provider fails, say so and show a saved live result with its original evidence snapshot, labeled as saved. If none exists, use the labeled synthetic demo. Do not present a fixture as a current archive search.

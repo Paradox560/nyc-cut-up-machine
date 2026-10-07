@@ -4,13 +4,13 @@
 
 A found-poetry print shop built for the [Elastic × Mistral NYC Hack Night](https://github.com/AvenueJ/elastic-mistral-hacknight). It retrieves words from historical NYC storefront photographs and assembles a poem or letter from **actual photographic cutouts**. Click a cutout to see its exact location in the original picture. Export a standalone SVG poster with embedded photographs and archive credits.
 
-Mistral reads and composes. Elasticsearch finds the vocabulary. Application code checks every word.
+Mistral reads and composes. Elasticsearch finds words and a reusable photographic alphabet. Application code checks every cutout.
 
 ![NYC Cut-Up Machine composing from verified NYC storefront words](docs/preview.png)
 
 ## Quick start
 
-Requires **Python 3.11+**. The app has no Python package dependencies. Preparing new photographic word locations also requires the **Tesseract** command-line tool (tested with 5.5.2).
+Requires **Python 3.11+**. The app has no Python package dependencies. Preparing new photographic word locations also requires **Tesseract** (tested with 5.5.2). Letter preparation currently uses Tesseract and the macOS `sips` utility; serving already-prepared crops does not require either tool.
 
 ```sh
 git clone https://github.com/Paradox560/nyc-cut-up-machine.git
@@ -65,6 +65,17 @@ python3 -m cutup index
 
 Tesseract proposes exact-word bounding boxes; the review sheet shows the original pixels. Skewed or faint historical signs may need manually measured boxes, or can be omitted. Live composition uses only words with accepted locations. Editing a source transcription invalidates its locations, so localize and index that source again after corrections.
 
+Prepare a reusable letter drawer from those words:
+
+```sh
+python3 scripts/extract_letters.py
+# Open data/archive/letters/atlas.html; check the correctly framed letters.
+python3 scripts/extract_letters.py --accept /path/to/accepted-letter-ids.json
+python3 -m cutup index
+```
+
+Tesseract supplies actual character boundaries inside correctly recognized word crops. Letters are never guessed by dividing a word into equal-width strips. Rare letters can be located manually and inspected in the same atlas. Every accepted character is bound to an original image fingerprint and exact pixel coordinates.
+
 The full manifest includes additional Manhattan storefronts with richer signage; increase `--limit` to ingest those. Review state is preserved on ordinary re-ingestion. The explicit OCR refresh option resets it. See [archive ingestion and attribution](docs/ARCHIVE.md) for details.
 
 If your account has vision/chat quota but its OCR API is rate-limited, select the explicit vision-transcription path:
@@ -80,27 +91,29 @@ For a custom collection, copy the schema in `data/seeds.json` and use `--manifes
 ### Make a print
 
 1. Describe the feeling or purpose: “a breakup letter that sounds like a shop closing.”
-2. Choose poem, love letter, breakup letter, or manifesto.
+2. Choose poem, love letter, breakup letter, or manifesto. Choose **Make it a custom** to supply your own exact message instead.
 3. **Cut it together** retrieves source vocabulary and composes with Mistral.
 4. Click a word to inspect its enlarged cutout and highlighted rectangle in the original photograph.
 5. Copy the words or export a standalone SVG containing the same photo pixels.
 
-A small collection cannot express every request. The model makes the closest found poem using available words; it cannot invent missing connective words. Reusing an existing word is allowed. The archive supplies the vocabulary, not a claimed historical poem or message.
+Whole photographed words are preferred. When a word is unavailable, the machine spells it with photographed letters, each independently linked to its source. Generated forms use Mistral to write; custom mode preserves your wording and line breaks without a chat-model rewrite, and still uses Mistral embeddings with Elasticsearch retrieval. Custom messages can contain up to 300 characters. Visible letter case follows the original signs; copying text preserves your exact input.
+
+The prepared demo alphabet covers A–Z. Punctuation and digits require their own genuine crops; unavailable characters produce an explicit error, never a font substitute. The source drawer separately reports downloaded photographs, reviewed photographs, whole-word crops, and letter crops.
 
 ## How it works
 
 ```text
-NYC Municipal Archives photographs
-        ↓ Mistral transcription → visual review → word localization + crop review
-Elasticsearch: source metadata + text + pixel coordinates + Mistral embeddings
+NYC Municipal Archives + selected Library of Congress photographs
+        ↓ Mistral / recorded visual transcription → review → word and letter localization
+Elasticsearch: source metadata + text + word/letter coordinates + Mistral embeddings
         ↓ BM25 and vector search combined with RRF
-Mistral: selects exact words from a constrained vocabulary
+Mistral writes a short composition / custom mode preserves your exact message
         ↓ strict word, crop-boundary, and original-image fingerprint checks
 Original photograph pixels → cutout collage → highlighted evidence / embedded SVG
 ```
 
 - **Search is essential:** live compositions retrieve vocabulary from Elasticsearch using both lexical and semantic ranking. It is not an incidental log store.
-- **Provenance is enforced:** a JSON-schema enum constrains the model to retrieved spellings. The server maps selections to immutable source IDs and reconstructs the words from source text. Unknown words or IDs, stale transcriptions, malformed output, and excess length are rejected. Source-grounded style examples help small models form coherent phrases without supplying additional vocabulary.
+- **Provenance is enforced:** every displayed fragment resolves to a verified word or letter crop. When the letter drawer exists, Mistral may compose new words, but every character must be physically available in a reviewed photograph. Without a letter drawer, the original word-only enum constraint remains. Unknown characters, forged crop IDs, stale transcriptions, malformed output, and excess length are rejected.
 - **Review is separate from code validation:** proving a word exists in OCR does not prove the OCR is right. Live UI compositions use reviewed sources only.
 - **Pixels, not retyping:** every live word is a bounded viewport into its original JPEG/PNG. Both server and browser verify the image fingerprint; the browser also checks decoded dimensions. A missing crop or changed image produces an error. Export embeds each used original once and preserves crop coordinates, source links, and attribution.
 - **Snapshots survive edits:** each saved composition contains its source evidence at creation time. Later source corrections do not silently rewrite old prints.
@@ -117,6 +130,8 @@ node --check web/app.js
 Tests cover word and crop provenance, image fingerprints, invalid model output, source corrections, localization, persistence, ingestion validation, API boundaries, and review/index synchronization. Tests do not require paid services; live service checks are explicit commands.
 
 See [the three-minute demo script](docs/DEMO.md). The frontend is plain browser JavaScript and CSS; the backend uses Python's standard library. This is a local hackathon application, bound to loopback. Public deployment would need authentication, request limits, and a production HTTP server.
+
+See [the NYC dataset guide](docs/DATASETS.md) for the larger Municipal Archives collection, NYPL alternatives, and the Library of Congress source used to complete the alphabet. The municipal importer remains restricted to its approved host; the individually reviewed LOC item is documented in `data/loc-seed.json`.
 
 ## Data and credits
 

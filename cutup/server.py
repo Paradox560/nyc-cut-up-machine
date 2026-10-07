@@ -91,10 +91,20 @@ class Handler(BaseHTTPRequestHandler):
             path = urlparse(self.path).path
             if method == "GET" and path == "/api/status":
                 corpus = store.all()
+                alphabet = sorted({glyph["text"].upper() for source in corpus if source["reviewed"]
+                                   for glyph in source["letters"] if glyph["text"].isascii() and glyph["text"].isalpha()})
+                archive = config.data_dir / "archive"
+                inventory = {"downloaded_images": sum(1 for file in archive.glob("*") if file.is_file() and file.suffix.lower() in {".jpg", ".jpeg", ".png"}),
+                    "processed_images": len(corpus), "reviewed_images": sum(s["reviewed"] for s in corpus),
+                    "word_crops": sum(len(s["word_crops"]) for s in corpus if s["reviewed"]),
+                    "letter_crops": sum(len(s["letter_crops"]) for s in corpus if s["reviewed"]),
+                    "alphabet_coverage": alphabet,
+                    "missing_letters": [char for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if char not in alphabet]}
                 return self.json({"mode": "demo" if demo else "live",
                     "configured": {"mistral": bool(config.mistral_api_key),
                                    "elasticsearch": bool(config.elasticsearch_url and config.elasticsearch_api_key)},
                     "corpus_count": len(corpus), "reviewed_count": sum(s["reviewed"] for s in corpus),
+                    "inventory": inventory,
                     "models": {"chat": config.chat_model, "ocr": config.ocr_model, "embed": config.embed_model},
                     "voice_enabled": bool(config.voice_id and config.mistral_api_key and not demo)})
             if method == "GET" and path == "/api/words":
@@ -140,8 +150,11 @@ class Handler(BaseHTTPRequestHandler):
                         if "ocr_text" in payload:
                             if payload["ocr_text"] != source["ocr_text"]:
                                 source["word_crops"] = []
+                                source["letter_crops"] = []
                                 source.pop("crop_review_method", None)
                                 source.pop("crop_reviewed_at", None)
+                                source.pop("letter_reviewed_at", None)
+                                source.pop("letter_review_method", None)
                             source["ocr_text"] = payload["ocr_text"]
                         source["reviewed"] = payload["reviewed"]
                         source["reviewed_at"] = datetime.now(timezone.utc).isoformat() if source["reviewed"] else None
@@ -159,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
                             raise ProviderError("Composition not found.", status=404, code="not_found")
                         if result.get("mode") != "live":
                             raise ProviderError("Speech is available for live archival compositions.", status=409)
-                        audio = MistralClient(config).speech(plain_text(result["lines"]))
+                        audio = MistralClient(config).speech(result.get("exact_text", plain_text(result["lines"])))
                         self.headers_for(200, "audio/mpeg", len(audio))
                         return self.wfile.write(audio)
                 finally:

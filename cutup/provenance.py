@@ -42,7 +42,8 @@ def validate_source(source: dict) -> dict:
         if (type(width) is not int or type(height) is not int or width <= 0 or height <= 0
                 or width * height > 50_000_000):
             raise ProvenanceError("Crops require valid source image dimensions.")
-        if not re.fullmatch(r"[a-f0-9]{64}", str(source.get("image_sha256", ""))):
+        digest = source.get("image_sha256")
+        if not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}", digest):
             raise ProvenanceError("Crops require a source image SHA-256 digest.")
     words = {word["id"]: word for word in result["words"]}
     accepted = []
@@ -63,8 +64,8 @@ def validate_source(source: dict) -> dict:
         if x < 0 or y < 0 or w <= 0 or h <= 0 or x + w > width or y + h > height:
             raise ProvenanceError("Crop lies outside the source photograph.")
         confidence = crop.get("confidence")
-        if (type(confidence) not in (int, float) or not math.isfinite(confidence)
-                or not 0 <= confidence <= 100):
+        if (type(confidence) not in (int, float) or not 0 <= confidence <= 100
+                or not math.isfinite(confidence)):
             raise ProvenanceError("Crop confidence must be a finite number from 0 to 100.")
         if not isinstance(crop.get("method"), str) or not 1 <= len(crop["method"]) <= 80:
             raise ProvenanceError("Crop localization method is required.")

@@ -168,12 +168,12 @@ class CropProvenanceTests(unittest.TestCase):
                     validate_source({**self.record, "word_crops": [{**self.crop, **values}]})
 
     def test_crop_requires_image_digest_and_valid_localization_metadata(self):
-        for digest in [None, "", "a" * 63, "g" * 64, "a" * 65]:
+        for digest in [None, "", "a" * 63, "g" * 64, "a" * 65, int("1" * 64)]:
             with self.subTest(digest=digest):
                 with self.assertRaises(ProvenanceError):
                     validate_source({**self.record, "image_sha256": digest})
         for field, values in [
-            ("confidence", [None, True, "99", -1, 101, float("nan"), float("inf")]),
+            ("confidence", [None, True, "99", -1, 101, 10 ** 400, float("nan"), float("inf")]),
             ("method", [None, [], "", "x" * 81]),
         ]:
             for value in values:

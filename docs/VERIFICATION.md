@@ -39,3 +39,7 @@ Validated on October 7, 2026 against a local Python server, Mistral's hosted API
 - The filtered bundle contains 50 reviewed nonempty sources, 105 word crops, 31 letter crops, and approximately 134 MiB of original images. A prepared-only build succeeded without raw ingestion data or `.env.local`.
 - Hosted composition save/read succeeded against the configured Elasticsearch project. Local composition storage behavior remains unchanged.
 - The full 174-test suite passes, including localhost HTTP fixtures and mocked hosted storage. These checks do not by themselves establish that the public deployment is reachable.
+
+## Production handoff
+
+StreetScript is deployed at https://streetscript.vercel.app. Public page, transparent logo, and API status returned HTTP 200 without Vercel authentication. The live custom-message browser check passed on production, including exact wording, verified source photographs, per-letter inspection, SVG export rendered offline, and mobile layout. Hosted source review and cross-origin requests were rejected with HTTP 403. The final backend and browser syntax suite passed (174 tests), and GitHub Actions passed.

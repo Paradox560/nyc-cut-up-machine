@@ -14,7 +14,7 @@ The promise: **write a new message using actual pieces of historical NYC photogr
 
 “What if New York could write you a message using the letters it put on its buildings? This machine turns an archive into a photographic alphabet.”
 
-Show an imported photograph, its archive attribution, and one reviewed storefront word. Explain that each usable word or letter has an accepted rectangle in the original image.
+Begin on the print shop. Explain that each usable word or letter has an accepted rectangle in an original image; the contributing photographs will appear after generation.
 
 ## 0:25–1:10 — Make an exact custom message
 
@@ -31,7 +31,7 @@ Custom mode preserves the input and line breaks without a chat-model rewrite. Vi
 
 ## 1:10–1:50 — Prove a letter
 
-Click a fragment. Show its enlarged cutout and outlined rectangle in the full photograph. Inspect another letter from a different source. The grain, weathering, and different historical letterforms should remain visible.
+Open **The source drawer**, which now shows only photographs used in this piece. Return to the print and click a fragment. Show its enlarged cutout and outlined rectangle in the full photograph. Inspect another letter from a different source. The grain, weathering, and different historical letterforms should remain visible.
 
 “Every fragment is bound to an image fingerprint and exact coordinates. We can point back to the evidence.”
 

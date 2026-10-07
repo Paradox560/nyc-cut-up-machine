@@ -51,7 +51,7 @@ python3 scripts/ingest.py --limit 3
 python3 -m cutup
 ```
 
-Open **Source drawer**. Inspect each image, correct the transcription, keep only clearly visible storefront words, and mark the source reviewed. Saving a review embeds the corrected text and writes it to Elasticsearch. Index all already-ingested sources with `python3 -m cutup index`.
+Source review happens during archive preparation. Inspect the downloaded originals against their transcriptions in `data/corpus.json`, keeping only clearly visible storefront words. Submit corrections to `POST /api/sources/review` with `{ "id": "SOURCE_ID", "reviewed": true, "ocr_text": "CORRECTED TEXT" }`; saving embeds the corrected text and writes it to Elasticsearch. Index already-reviewed sources with `python3 -m cutup index`. The public workshop’s **Source drawer** appears after generation and shows only the photographs that contributed to the current piece.
 
 Next, locate the words in the actual images:
 
@@ -98,7 +98,7 @@ For a custom collection, copy the schema in `data/seeds.json` and use `--manifes
 
 Whole photographed words are preferred. When a word is unavailable, the machine spells it with photographed letters, each independently linked to its source. Generated forms use Mistral to write; custom mode preserves your wording and line breaks without a chat-model rewrite, and still uses Mistral embeddings with Elasticsearch retrieval. Custom messages can contain up to 300 characters. Visible letter case follows the original signs; copying text preserves your exact input.
 
-The prepared demo alphabet covers A–Z. Punctuation and digits require their own genuine crops; unavailable characters produce an explicit error, never a font substitute. The source drawer separately reports downloaded photographs, reviewed photographs, whole-word crops, and letter crops.
+The prepared demo alphabet covers A–Z. Punctuation and digits require their own genuine crops; unavailable characters produce an explicit error, never a font substitute. The source drawer appears after generation and shows only the original photographs used in the current piece, without inventory counters.
 
 ## How it works
 

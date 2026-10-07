@@ -113,6 +113,8 @@ class Handler(BaseHTTPRequestHandler):
                     if path == "/api/check":
                         return self.json({"mistral": MistralClient(config).check(), "elasticsearch": ElasticClient(config).check()})
                     if path == "/api/sources/review":
+                        if not isinstance(payload.get("id"), str) or not payload["id"]:
+                            raise ValueError("A source id is required.")
                         source = store.get(payload.get("id"))
                         if source is None:
                             raise ProviderError("Archive source not found.", status=404, code="not_found")

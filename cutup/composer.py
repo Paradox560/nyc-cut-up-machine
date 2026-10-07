@@ -18,7 +18,7 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
             include_unreviewed: bool = False) -> dict:
     if not isinstance(prompt, str) or not 3 <= len(prompt.strip()) <= 2000:
         raise ValueError("Describe what to write in 3–2,000 characters.")
-    if form not in FORMS:
+    if not isinstance(form, str) or form not in FORMS:
         raise ValueError("Choose poem, love-letter, breakup-letter, or manifesto.")
     trace = []
     warnings = []

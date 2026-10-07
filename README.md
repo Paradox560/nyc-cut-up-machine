@@ -129,7 +129,7 @@ node --check web/app.js
 
 Tests cover word and crop provenance, image fingerprints, invalid model output, source corrections, localization, persistence, ingestion validation, API boundaries, and review/index synchronization. Tests do not require paid services; live service checks are explicit commands.
 
-See [the three-minute demo script](docs/DEMO.md). The frontend is plain browser JavaScript and CSS; the backend uses Python's standard library. This is a local hackathon application, bound to loopback. Public deployment would need authentication, request limits, and a production HTTP server.
+See [the three-minute demo script](docs/DEMO.md) and [Vercel deployment instructions](docs/DEPLOYMENT.md). The frontend is plain browser JavaScript and CSS; the backend uses Python's standard library. Local serving binds to loopback. The Vercel adapter serves the public workshop with packaged photographic evidence and durable Elasticsearch composition storage. Source review remains local.
 
 See [the NYC dataset guide](docs/DATASETS.md) for the larger Municipal Archives collection, NYPL alternatives, and the Library of Congress source used to complete the alphabet. The municipal importer remains restricted to its approved host; the individually reviewed LOC item is documented in `data/loc-seed.json`.
 

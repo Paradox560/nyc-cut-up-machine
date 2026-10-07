@@ -4,7 +4,7 @@ Validated on October 7, 2026 against a local Python server, Mistral's hosted API
 
 ## Completed
 
-- All 165 automated tests pass after integrating main `c0b0631`. This includes the original 126 tests and additional letter provenance, moderation, source reuse, and word-count regressions. The suite uses isolated temporary storage and mocked paid services, with real localhost HTTP tests.
+- All 174 automated tests pass after integrating main and the Vercel adapter. This includes letter provenance, moderation, source reuse, word-count regressions, hosted storage/origin checks, and strict whole-word fallback after letter assembly fails. The suite uses isolated temporary storage and mocked paid services, with real localhost HTTP tests.
 - JavaScript modules pass `node --check`.
 - Real Mistral account authentication and `mistral-embed` requests succeed; embeddings contain 1,024 dimensions.
 - The merged local corpus contains 59 photographs: 58 NYC Municipal Archives tax photographs and one Library of Congress photograph of Jack’s storefront in Far Rockaway, Queens. Fifty-one sources have been visually reviewed; 50 contain nonempty transcriptions eligible for indexing. Municipal Archives text uses the explicit `ministral-3b-2512` vision path; the LOC text was transcribed directly from the photograph.
@@ -24,8 +24,8 @@ Validated on October 7, 2026 against a local Python server, Mistral's hosted API
 - The account's dedicated OCR models returned HTTP 429. The working dataset used the explicit **vision transcription** path, with that method and actual model recorded on every source. No claim is made that the dedicated OCR API completed these transcriptions.
 - The event guide's Large 4 was not available under the supplied account, and Medium/Small inference was rate-limited. The user identified working quota for `ministral-3b-2512`; that model was verified and configured.
 - Optional Voxtral speech is implemented but was not live-tested because no voice ID was supplied.
-- This is a loopback-only hackathon app, not a publicly hosted multi-user service.
-- Downloaded archive images, reviewed corpus, credentials, and generated prints stay in ignored local data. A fresh clone starts with the labeled synthetic demo or imports and reviews its own archive vocabulary.
+- The Vercel adapter is implemented and tested. Source review is disabled when hosted; there are no application-level accounts or per-user quotas. Deployment URL checks are recorded separately after publishing.
+- Downloaded archive images, reviewed corpus, and credentials remain outside Git. The CLI deployment explicitly uploads a filtered photographic bundle; hosted generated prints persist in a dedicated Elasticsearch composition index. A fresh clone starts with the labeled synthetic demo or imports and reviews its own archive vocabulary.
 
 ## Main integration checks
 
@@ -33,3 +33,9 @@ Validated on October 7, 2026 against a local Python server, Mistral's hosted API
 - Preserved reuse IDs, both live moderation checks, style hints, new forms, vocabulary search, and the Rearrange UI.
 - Unknown letters, missing photo IDs, missing or altered crops, duplicate source IDs, and unmarked assemblies fail provenance validation. Every accepted letter resolves to a registered photo crop; local image fingerprints are checked before composition.
 - `python3 -m cutup --demo --port 0` starts successfully. Its page, status, and vocabulary routes passed a smoke check on an isolated port, leaving the existing server on port 8765 running.
+
+## Vercel preparation checks
+
+- The filtered bundle contains 50 reviewed nonempty sources, 105 word crops, 31 letter crops, and approximately 134 MiB of original images. A prepared-only build succeeded without raw ingestion data or `.env.local`.
+- Hosted composition save/read succeeded against the configured Elasticsearch project. Local composition storage behavior remains unchanged.
+- The full 174-test suite passes, including localhost HTTP fixtures and mocked hosted storage. These checks do not by themselves establish that the public deployment is reachable.

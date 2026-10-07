@@ -1,9 +1,10 @@
 import { api, explainError, timeoutSignal } from './api.js';
 import { downloadPoster, plainText } from './export.js';
 import { element, renderComposition, renderSourceDialog, renderSourceGrid } from './render.js';
+import { liveCropSources, loadOriginals } from './crops.js';
 
 const $ = (id) => document.getElementById(id);
-const state = { status: null, sources: [], composition: null, controller: null, speechController: null, audioURL: null, toastTimer: null };
+const state = { status: null, sources: [], composition: null, originals: new Map(), controller: null, exportController: null, speechController: null, audioURL: null, toastTimer: null };
 
 function toast(message) {
   clearTimeout(state.toastTimer);
@@ -39,10 +40,10 @@ function selectPanel(panel) {
   if (!compose) renderLibrary();
 }
 
-function openSource(source, word = '', snapshot = false) {
+function openSource(source, token = null, snapshot = false) {
   if (!source) return toast('This print has no source record for that word.');
-  $('source-selected-word').textContent = word;
-  renderSourceDialog($('source-dialog-content'), source, { onSave: saveSource, snapshot });
+  $('source-selected-word').textContent = token?.text || '';
+  renderSourceDialog($('source-dialog-content'), source, { onSave: saveSource, snapshot, token, originalURL: state.originals.get(source.id) });
   $('source-dialog').scrollTop = 0;
   $('source-dialog').showModal();
 }
@@ -103,19 +104,27 @@ function clearAudio() {
   state.audioURL = null;
 }
 
-function displayComposition(composition) {
+async function displayComposition(composition, signal) {
   if (composition.verified !== true || !Array.isArray(composition.lines) || !Array.isArray(composition.sources)) {
     throw new Error('The machine returned a print without verified word provenance. No new print was displayed.');
   }
+  let originals = new Map();
+  if (composition.mode !== 'demo') {
+    const sources = liveCropSources(composition);
+    $('request-status').textContent = 'Checking the original photographs and preparing their cutouts…';
+    originals = await loadOriginals(sources, signal);
+    signal?.throwIfAborted();
+  }
+  renderComposition($('composition'), composition, (source, token) => openSource(source, token, true), originals);
   clearAudio();
   state.composition = composition;
-  renderComposition($('composition'), composition, (source, word) => openSource(source, word, true));
+  state.originals = originals;
   $('composition').hidden = false;
   $('empty-composition').hidden = true;
-  $('edition').textContent = composition.mode === 'demo' ? 'SAMPLE EDITION' : 'VERIFIED WORDS';
+  $('edition').textContent = composition.mode === 'demo' ? 'SAMPLE EDITION' : 'ORIGINAL PHOTO CUTS';
   const allReviewed = composition.sources.every((source) => source.reviewed);
-  $('paper-footnote').textContent = composition.mode === 'demo' ? 'SAMPLE VOCABULARY · NOT ARCHIVAL EVIDENCE' : allReviewed ? 'EVERY WORD TRACED TO A REVIEWED SOURCE.' : 'SOURCE TRANSCRIPTIONS NEED REVIEW.';
-  $('composition-instruction').textContent = '↖ Tap any word to see where it came from.';
+  $('paper-footnote').textContent = composition.mode === 'demo' ? 'SAMPLE VOCABULARY · NOT ARCHIVAL EVIDENCE' : allReviewed ? 'CUT FROM ORIGINAL PHOTOGRAPHS. EVERY WORD TRACED.' : 'SOURCE TRANSCRIPTIONS NEED REVIEW.';
+  $('composition-instruction').textContent = composition.mode === 'demo' ? '↖ Tap any word to see where it came from.' : '↖ Tap a cutout to find it in the original photograph.';
   $('composition-stats').textContent = `${composition.stats.words} words / ${composition.stats.source_count} sources`;
   $('composition-warnings').replaceChildren();
   for (const warning of composition.warnings || []) $('composition-warnings').append(element('p', '', warning));
@@ -146,8 +155,8 @@ async function compose(event) {
   $('request-status').textContent = state.status?.mode === 'demo' ? 'Arranging the sample vocabulary. No model or search services are called in sample mode.' : 'Searching the source vocabulary, composing, and checking every selected word…';
   try {
     const composition = await api.compose({ prompt, form: $('form-kind').value, include_unreviewed: false }, controller.signal);
-    displayComposition(composition);
-    $('request-status').textContent = composition.mode === 'demo' ? 'Sample print ready. This is a preset composition for the selected form; your brief is used in live mode.' : 'Fresh off the press. Every printed word passed the source check.';
+    await displayComposition(composition, controller.signal);
+    $('request-status').textContent = composition.mode === 'demo' ? 'Sample print ready. This is a preset composition for the selected form; your brief is used in live mode.' : 'Fresh off the press. Every cutout comes from a verified original photograph.';
     if (matchMedia('(max-width: 620px)').matches) $('press-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     $('request-status').classList.add('is-error');
@@ -211,15 +220,30 @@ for (const button of document.querySelectorAll('.sample-prompt')) button.addEven
 $('copy-button').addEventListener('click', async () => {
   if (!state.composition) return;
   try { await navigator.clipboard.writeText(plainText(state.composition)); toast('The words are yours. Copied to clipboard.'); }
-  catch { toast('Clipboard access is unavailable. Select the words on the print and copy them manually.'); }
+  catch { toast('Clipboard access is unavailable. Allow clipboard access in your browser and try again.'); }
 });
-$('export-button').addEventListener('click', () => {
-  if (!state.composition) return;
-  downloadPoster(state.composition);
-  toast('Poster saved as SVG, with source credits included.');
+$('export-button').addEventListener('click', async () => {
+  if (!state.composition || state.exportController) return;
+  const controller = new AbortController();
+  state.exportController = controller;
+  const composition = state.composition;
+  const timeout = setTimeout(() => controller.abort(), 90000);
+  $('export-button').disabled = true;
+  $('export-button').textContent = 'Preparing poster…';
+  try {
+    await downloadPoster(composition, { signal: controller.signal });
+    toast(composition.mode === 'demo' ? 'Sample poster saved, with its synthetic vocabulary label.' : 'Poster saved with original photo cutouts and source credits.');
+  } catch (error) {
+    toast(error.name === 'AbortError' ? 'Poster export timed out. Try again with fewer source photographs.' : explainError(error));
+  } finally {
+    clearTimeout(timeout);
+    state.exportController = null;
+    $('export-button').disabled = false;
+    $('export-button').textContent = 'Save poster ↓';
+  }
 });
 $('speech-button').addEventListener('click', speakComposition);
-window.addEventListener('pagehide', () => { state.controller?.abort(); clearAudio(); });
+window.addEventListener('pagehide', () => { state.controller?.abort(); state.exportController?.abort(); clearAudio(); });
 
 updatePromptCount();
 const initial = await Promise.allSettled([api.status(timeoutSignal(15000)), api.sources(timeoutSignal(15000))]);

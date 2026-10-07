@@ -110,6 +110,10 @@ textarea::placeholder { color: #8a8677; }
 .word-token[data-style='2'] { background: transparent; color: var(--accent); border: 1px solid #dfd3b6; font-family: var(--sans); text-transform: uppercase; font-size: clamp(14px, 1.9vw, 27px); font-weight: 600; padding: 6px 9px; }
 .word-token[data-style='3'] { background: #e3d5b6; font-style: italic; }
 .word-token:hover { transform: rotate(0) translateY(-3px); outline: 1px dashed var(--accent); outline-offset: 3px; }
+.word-token.is-crop { display: block; flex: 0 1 auto; max-width: 100%; padding: 0; border: 0; background: transparent; line-height: 0; box-shadow: 1px 3px 5px #1e1b102b; overflow: hidden; }
+.word-crop-svg { display: block; width: 100%; height: auto; overflow: hidden; pointer-events: none; }
+.composition:has(.is-crop) .composition-line { align-items: center; column-gap: 13px; row-gap: 13px; margin-bottom: 22px; }
+.composition:has(.is-crop) { padding-top: 45px; }
 .composition-meta { display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 9px; line-height: 1.7; margin-top: 5px; }
 .composition-meta p { margin-top: 10px; }
 #composition-stats { text-align: right; white-space: nowrap; font-family: var(--mono); font-size: 8px; }
@@ -158,6 +162,10 @@ input[type='checkbox'] { accent-color: var(--accent); width: 14px; height: 14px;
 .source-selected-word:empty { display: none; }
 .source-dialog h2 { font-family: var(--serif); font-size: 36px; font-weight: 400; line-height: 1.05; margin: 27px 0 12px; }
 .source-dialog-image { width: 100%; max-height: 300px; object-fit: contain; display: block; background: #dfd9c9; margin: 20px 0; }
+.selected-crop-view { display: flex; align-items: center; justify-content: center; padding: 18px; background: #ded7c6; border: 1px solid #c8bea6; min-height: 100px; }
+.selected-crop-svg { display: block; width: 100%; height: auto; max-height: 160px; overflow: hidden; }
+.source-photo-highlight { display: block; width: 100%; height: auto; max-height: 440px; background: #ded7c6; }
+.source-crop-coordinates { font-family: var(--mono); font-size: 9px; color: var(--muted); line-height: 1.7; }
 .source-dialog .source-no-image { border: 1px dashed #c4bda9; margin: 20px 0; }
 .source-dialog-label { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); display: block; margin: 22px 0 8px; }
 .source-transcription { white-space: pre-wrap; word-break: break-word; line-height: 1.8; font-size: 14px; margin: 0; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }

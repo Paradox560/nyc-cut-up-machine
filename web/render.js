@@ -1,3 +1,5 @@
+import { archiveImageURL, cropViewport, highlightedPhoto, liveCropSources } from './crops.js';
+
 export function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -10,7 +12,7 @@ export function safeURL(value, { local = false } = {}) {
   try {
     const url = new URL(value, location.origin);
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
-    if (local && url.origin === location.origin && url.pathname.startsWith('/archive/')) return url.href;
+    if (local) return archiveImageURL(value);
     if (value.startsWith('https://') || value.startsWith('http://')) return url.href;
   } catch { /* Missing or malformed archive links have no navigation affordance. */ }
   return null;
@@ -36,26 +38,33 @@ export function sourceDetails(source) {
   return [source.borough, source.block ? `Block ${source.block}` : '', source.lot ? `Lot ${source.lot}` : ''].filter(Boolean).join(' / ');
 }
 
-export function renderComposition(container, composition, onSelectSource) {
-  container.replaceChildren();
+export function renderComposition(container, composition, onSelectSource, originals = new Map()) {
+  if (composition.mode !== 'demo') liveCropSources(composition);
+  const fragment = document.createDocumentFragment();
   const sourceMap = new Map(composition.sources.map((source) => [source.id, source]));
   let index = 0;
   for (const line of composition.lines) {
     const row = element('div', 'composition-line');
     for (const token of line) {
       const source = sourceMap.get(token.source_id);
-      const button = element('button', 'word-token', token.text);
+      const demo = composition.mode === 'demo';
+      const button = element('button', `word-token${demo ? '' : ' is-crop'}`, demo ? token.text : undefined);
       button.type = 'button';
-      button.dataset.style = String(index % 4);
+      if (demo) button.dataset.style = String(index % 4);
+      else {
+        button.style.width = `${Math.min(520, Math.max(24, token.crop.width / token.crop.height * 64))}px`;
+        button.append(cropViewport(token, source, { originalURL: originals.get(source.id) }));
+      }
       button.style.setProperty('--tilt', `${[-1.7, .6, -1.1, 1.6, -.4][index % 5]}deg`);
       button.setAttribute('aria-label', `${token.text}. View source: ${source?.title || token.source_id}`);
       button.title = `Found in ${source?.title || token.source_id}`;
-      button.addEventListener('click', () => onSelectSource(source, token.text));
+      button.addEventListener('click', () => onSelectSource(source, token));
       row.append(button);
       index += 1;
     }
-    container.append(row);
+    fragment.append(row);
   }
+  container.replaceChildren(fragment);
 }
 
 export function renderSourceGrid(container, sources, { onOpen, onReview }) {
@@ -93,13 +102,22 @@ export function renderSourceGrid(container, sources, { onOpen, onReview }) {
   }
 }
 
-export function renderSourceDialog(container, source, { onSave, snapshot = false }) {
+export function renderSourceDialog(container, source, { onSave, snapshot = false, token = null, originalURL }) {
   container.replaceChildren();
   const title = element('h2', '', source.title || 'Untitled source');
   title.id = 'source-dialog-title';
   container.append(title, element('p', 'source-card-detail', sourceDetails(source)));
   if (isSample(source)) container.append(element('p', 'sample-label', 'Sample vocabulary · not archival evidence'));
-  container.append(sourceImage(source, 'source-dialog-image'));
+  if (token?.crop && !isSample(source)) {
+    container.append(element('p', 'source-dialog-label', 'The original pixels, enlarged'));
+    const enlargement = element('div', 'selected-crop-view');
+    enlargement.append(cropViewport(token, source, { originalURL, className: 'selected-crop-svg' }));
+    container.append(enlargement);
+    container.append(element('p', 'source-dialog-label', 'Where this cut comes from'));
+    container.append(highlightedPhoto(token, source, originalURL));
+    const crop = token.crop;
+    container.append(element('p', 'source-crop-coordinates', `${crop.width} × ${crop.height} px at (${crop.x}, ${crop.y})${crop.method ? ` · ${crop.method}` : ''}`));
+  } else container.append(sourceImage(source, 'source-dialog-image'));
   container.append(element('p', 'source-dialog-label', 'Words from this source'));
   container.append(element('p', 'source-transcription', source.ocr_text));
   if (source.transcription_method) {

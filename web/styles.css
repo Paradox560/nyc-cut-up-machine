@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Instrument+Serif:ital@0;1&display=swap');
+/* Self-hosted open-source fonts; license notices are in web/fonts/. */
+@font-face { font-family: 'DM Sans'; font-style: normal; font-weight: 400 700; font-display: swap; src: url('/fonts/dm-sans-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Instrument Serif'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/instrument-serif-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Instrument Serif'; font-style: italic; font-weight: 400; font-display: swap; src: url('/fonts/instrument-serif-italic-latin.woff2') format('woff2'); }
 
 :root { color-scheme: light; --ink: #24241f; --muted: #77766b; --paper: #fbf9ef; --ground: #f1eddf; --line: #cecbbb; --accent: #db4329; --sans: 'DM Sans', 'Helvetica Neue', Arial, sans-serif; --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif; --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; }
 * { box-sizing: border-box; }

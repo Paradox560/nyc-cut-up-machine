@@ -152,7 +152,7 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     root = (config.project_root / "web").resolve()
                     file = (root / unquote(path.lstrip("/") or "index.html")).resolve()
-                    extensions = {".html", ".css", ".js", ".svg"}
+                    extensions = {".html", ".css", ".js", ".svg", ".woff2"}
                 if file.is_relative_to(root) and file.is_file() and file.suffix.lower() in extensions:
                     data = file.read_bytes()
                     mime = mimetypes.guess_type(file.name)[0] or "application/octet-stream"

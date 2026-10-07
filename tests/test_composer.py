@@ -1,4 +1,5 @@
 from copy import deepcopy
+from hashlib import sha256
 import json
 from pathlib import Path
 import tempfile
@@ -9,16 +10,30 @@ from cutup.composer import compose
 from cutup.config import Config
 from cutup.http_client import ProviderError
 from cutup.mistral import MistralClient
-from cutup.provenance import plain_text, validate_source
+from cutup.provenance import build_words, plain_text, validate_source
 from cutup.store import CorpusStore
 
 
-def archive_source(identifier="archive-one", text="LOVE LOST AND FOUND OPEN ALL NIGHT", **overrides):
-    return validate_source({
+IMAGE_BYTES = b"synthetic archive bytes for isolated crop tests"
+
+
+def archive_source(identifier="archive-one", text="LOVE LOST AND FOUND OPEN ALL NIGHT", *, with_crops=True, **overrides):
+    record = {
         "id": identifier, "ocr_text": text, "reviewed": True,
         "source_url": "https://archive.example/" + identifier,
         "title": "Test archive photograph", "synthetic": False, **overrides,
-    })
+    }
+    if with_crops:
+        record.update({
+            "image_url": f"/archive/{identifier}.jpg", "image_width": 200, "image_height": 100,
+            "image_sha256": sha256(IMAGE_BYTES).hexdigest(),
+            "word_crops": [{
+                "word_id": word["id"], "text": word["text"], "x": (index % 10) * 20,
+                "y": (index // 10) * 20, "width": 20, "height": 20,
+                "method": "test-localization", "confidence": 99,
+            } for index, word in enumerate(build_words(identifier, text))],
+        })
+    return validate_source(record)
 
 
 class ComposerTests(unittest.TestCase):
@@ -31,6 +46,10 @@ class ComposerTests(unittest.TestCase):
             mistral_api_key="test-mistral", elasticsearch_url="https://cluster.example",
             elasticsearch_api_key="test-elastic",
         )
+        archive = self.config.data_dir / "archive"
+        archive.mkdir(parents=True)
+        for identifier in ["archive-one", "archive-two"]:
+            (archive / f"{identifier}.jpg").write_bytes(IMAGE_BYTES)
         self.source = archive_source()
         self.selected = {"lines": [[word["id"] for word in self.source["words"][:3]]]}
         self.elastic_patch = patch("cutup.composer.ElasticClient")
@@ -186,6 +205,40 @@ class ComposerTests(unittest.TestCase):
 
     def test_provider_failure_never_falls_back_to_synthetic_output(self):
         self.elastic.search.side_effect = ProviderError("Test retrieval failure")
+        with self.assertRaises(ProviderError):
+            compose(self.config, "A lost love")
+        self.mistral.compose.assert_not_called()
+        self.assertEqual(self.saved_results(), [])
+
+    def test_live_composition_refuses_uncropped_vocabulary(self):
+        self.elastic.search.return_value = [archive_source(with_crops=False)]
+        with self.assertRaises(ProviderError) as raised:
+            compose(self.config, "A lost love")
+        self.assertEqual(raised.exception.code, "sparse_vocabulary")
+        self.mistral.compose.assert_not_called()
+        self.assertEqual(self.saved_results(), [])
+
+    def test_live_vocabulary_and_output_contain_only_cropped_words(self):
+        self.source = validate_source({**self.source, "word_crops": self.source["word_crops"][:4]})
+        self.elastic.search.return_value = [self.source]
+        self.mistral.compose.return_value = {"lines": [["LOVE", "FOUND"]]}
+        result = compose(self.config, "A lost love")
+        self.assertEqual(self.mistral.compose.call_args.kwargs["allowed_words"], ["LOVE", "LOST", "AND", "FOUND"])
+        self.assertTrue(all("crop" in word for line in result["lines"] for word in line))
+        self.assertEqual(result["lines"][0][0]["crop"], self.source["words"][0]["crop"])
+
+    def test_valid_but_uncropped_source_token_cannot_bypass_live_crop_requirement(self):
+        self.source = validate_source({**self.source, "word_crops": self.source["word_crops"][:4]})
+        self.elastic.search.return_value = [self.source]
+        self.mistral.compose.return_value = {"lines": [[self.source["words"][-1]["id"]]]}
+        with self.assertRaises(ProviderError) as raised:
+            compose(self.config, "A lost love")
+        self.assertEqual(raised.exception.code, "provenance_rejected")
+        self.assertEqual(self.mistral.compose.call_count, 2)
+        self.assertEqual(self.saved_results(), [])
+
+    def test_changed_photo_is_rejected_before_model_call_or_save(self):
+        (self.config.data_dir / "archive" / "archive-one.jpg").write_bytes(b"different image")
         with self.assertRaises(ProviderError):
             compose(self.config, "A lost love")
         self.mistral.compose.assert_not_called()

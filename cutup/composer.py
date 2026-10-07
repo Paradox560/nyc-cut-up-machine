@@ -8,7 +8,7 @@ from .config import Config
 from .demo import demo_selection, demo_sources
 from .http_client import ProviderError
 from .providers import ElasticClient, MistralClient
-from .provenance import ProvenanceError, resolve_lines
+from .provenance import ProvenanceError, resolve_lines, verify_crop_images
 from .store import CorpusStore
 
 FORMS = {"poem", "love-letter", "breakup-letter", "manifesto"}
@@ -45,15 +45,21 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
         if not sources:
             raise ProviderError("No reviewed archive vocabulary was found. Ingest photos and review their text in the source library.", status=409, code="empty_corpus")
         trace.append({"step": "Elasticsearch retrieval", "detail": f"Hybrid BM25 + Mistral vector search retrieved {len(sources)} source photographs."})
+        try:
+            verify_crop_images(sources, config.data_dir)
+        except ProvenanceError as exc:
+            raise ProviderError(str(exc), status=409, code="source_image_changed") from None
         # Cap context by unique spelling; one immutable, original source token per spelling.
         vocabulary = {}
         for source in sources:
             for word in source["words"]:
-                if word["text"].casefold() not in vocabulary and not word["text"].isdigit():
+                if (word.get("crop") and word["text"].casefold() not in vocabulary
+                        and not word["text"].isdigit()):
                     vocabulary[word["text"].casefold()] = word
         words = list(vocabulary.values())[:650]
         if len(words) < 4:
-            raise ProviderError("The retrieved photographs contain too few usable words. Add more legible storefronts.", status=409, code="sparse_vocabulary")
+            raise ProviderError("Too few words have photograph crops. Run python3 scripts/localize.py, inspect the crop sheet, and index the accepted locations.", status=409, code="sparse_vocabulary")
+        trace.append({"step": "Photograph crops", "detail": f"{len(words)} words have bounded pixel locations in original photographs; image fingerprints match the local archive."})
         allowed_ids = {w["id"] for w in words}
         aliases = {word["text"]: word["id"] for word in words}
         spelling = {word["text"].casefold(): word["text"] for word in words}
@@ -89,7 +95,8 @@ def compose(config: Config, prompt: str, form: str = "poem", *, demo: bool = Fal
         for attempt in range(2):
             payload = client.compose(messages, allowed_words=list(aliases))
             try:
-                lines = resolve_lines(expand_aliases(payload, aliases), sources, require_reviewed=not include_unreviewed)
+                lines = resolve_lines(expand_aliases(payload, aliases), sources,
+                                      require_reviewed=not include_unreviewed, require_crops=True)
                 if any(w["id"] not in allowed_ids for line in lines for w in line):
                     raise ProvenanceError("A selected token was outside the supplied vocabulary.")
                 break

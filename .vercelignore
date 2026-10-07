@@ -1,0 +1,14 @@
+/*
+!api
+!cutup
+!web
+!deployment_data
+!scripts
+!vercel.json
+!pyproject.toml
+!requirements.txt
+scripts/*
+!scripts/prepare_vercel.py
+**/__pycache__/**
+**/*.pyc
+.env*

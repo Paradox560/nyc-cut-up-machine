@@ -15,7 +15,7 @@ from .demo import demo_sources
 from .http_client import ProviderError
 from .providers import ElasticClient, MistralClient
 from .provenance import plain_text, validate_source
-from .store import CorpusStore
+from .store import CorpusStore, application_store
 
 
 class AppServer(ThreadingHTTPServer):
@@ -86,7 +86,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self.checked_origin()
             config = load_config(self.server.project_root)
-            store = CorpusStore(config.data_dir)
+            store = application_store(config)
             demo = self.server.force_demo or not config.configured
             path = urlparse(self.path).path
             if method == "GET" and path == "/api/status":
@@ -139,6 +139,8 @@ class Handler(BaseHTTPRequestHandler):
                     if path == "/api/check":
                         return self.json({"mistral": MistralClient(config).check(), "elasticsearch": ElasticClient(config).check()})
                     if path == "/api/sources/review":
+                        if config.hosted:
+                            raise ProviderError("Source review is available in the local workshop only.", status=403, code="source_review_disabled")
                         if not isinstance(payload.get("id"), str) or not payload["id"]:
                             raise ValueError("A source id is required.")
                         source = store.get(payload.get("id"))

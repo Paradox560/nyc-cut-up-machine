@@ -59,3 +59,11 @@ class CorpusStore:
         path = self.data_dir / "compositions" / f"{identifier}.json"
         with LOCK:
             return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def application_store(config):
+    """Use durable remote composition storage only in the hosted deployment."""
+    if config.hosted:
+        from .hosted_store import HostedStore
+        return HostedStore(config)
+    return CorpusStore(config.data_dir)

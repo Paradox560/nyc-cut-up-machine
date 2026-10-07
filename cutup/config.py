@@ -37,6 +37,7 @@ class Config:
     embed_model: str = "mistral-embed"
     voice_id: str = ""
     tts_model: str = "voxtral-mini-tts-latest"
+    hosted: bool = False
 
     @property
     def configured(self) -> bool:
@@ -62,7 +63,7 @@ def load_config(project_root: Path = ROOT) -> Config:
         raise ValueError("ELASTICSEARCH_INDEX must be a simple lowercase index name.")
     return Config(
         project_root=project_root,
-        data_dir=project_root / "data",
+        data_dir=project_root / ("deployment_data" if values.get("VERCEL") == "1" else "data"),
         mistral_api_key=values.get("MISTRAL_API_KEY", "").strip(),
         elasticsearch_url=endpoint,
         elasticsearch_api_key=values.get("ELASTICSEARCH_API_KEY", "").strip(),
@@ -72,4 +73,5 @@ def load_config(project_root: Path = ROOT) -> Config:
         embed_model=values.get("MISTRAL_EMBED_MODEL", "mistral-embed"),
         voice_id=values.get("MISTRAL_VOICE_ID", "").strip(),
         tts_model=values.get("MISTRAL_TTS_MODEL", "voxtral-mini-tts-latest"),
+        hosted=values.get("VERCEL") == "1",
     )

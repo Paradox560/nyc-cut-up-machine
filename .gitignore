@@ -12,3 +12,6 @@ data/audio/
 tmp/
 coverage.xml
 .coverage
+.vercel/
+deployment_data/
+public/
